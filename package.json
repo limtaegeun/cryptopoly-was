@@ -1,0 +1,45 @@
+{
+  "name": "cryptopoly-was",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "async": "^3.2.0",
+    "body-parser": "^1.19.0",
+    "compression": "^1.7.4",
+    "cookie-parser": "~1.4.3",
+    "cors": "^2.8.5",
+    "debug": "~2.6.9",
+    "express": "~4.16.0",
+    "http-errors": "~1.6.2",
+    "http-status-codes": "^1.4.0",
+    "lodash": "^4.17.15",
+    "moment": "^2.24.0",
+    "morgan": "~1.9.0",
+    "pug": "2.0.0-beta11",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.5",
+    "sequelize": "^5.21.5",
+    "sequelize-cli": "^5.5.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.7.2",
+    "@babel/node": "^7.7.0",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/register": "^7.7.0",
+    "chai": "^4.2.0",
+    "docdash": "^1.1.1",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-plugin-prettier": "^3.1.1",
+    "jsdoc": "^3.6.3",
+    "jsdoc-http-plugin": "^0.3.2",
+    "mocha": "^6.2.2",
+    "nodemon": "^1.19.4",
+    "prettier": "^1.19.1",
+    "supertest": "^4.0.2"
+  }
+}
