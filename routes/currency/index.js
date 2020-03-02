@@ -8,3 +8,5 @@ router.get("/:id", controller.getCurrency);
 router.post("/new", controller.createCurrency);
 router.patch("/edit", controller.editCurrency);
 router.delete("/delete", controller.deleteCurrency);
+
+module.exports = router;
