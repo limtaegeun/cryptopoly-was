@@ -3,6 +3,8 @@
 const express = require("express");
 const HTTP_STATUS_CODES = require("http-status-codes");
 const { Currency } = require("../../models");
+const moment = require("moment");
+const rp = require("request-promise");
 module.exports = {
   /**
    * get Currency with id
@@ -23,20 +25,18 @@ module.exports = {
     });
   },
   retrieveCurrency(req, res) {
-    let { limit, page, init } = req.query;
+    let { start, end } = req.query;
     // todo : query should option but now required
+    start = moment(start, "YYYY-MM-DD");
+    end = moment(end, "YYYY-MM-DD");
+
     let option = {
-      order: [["score", "DESC"]]
+      order: [["date", "AES"]],
+      date: {
+        $between: [start.toISOString(true), end.toISOString(true)]
+      }
     };
-    if (init === "true") {
-      option["where"] = {
-        score: 0
-      };
-    }
-    if (limit && page) {
-      option["limit"] = parseInt(limit);
-      option["offset"] = parseInt(limit * page);
-    }
+
     Currency.findAll(option)
       .then(currencies => {
         res.status(HTTP_STATUS_CODES.OK).json({
@@ -45,7 +45,7 @@ module.exports = {
       })
       .catch(err => {
         console.log(
-          "/lookbook ERROR : ",
+          "/currency ERROR : ",
           JSON.stringify({ success: false, err: err.message, stack: err.stack })
         );
         res
@@ -120,5 +120,32 @@ module.exports = {
           .json({ success: false, err: "invalid code" });
       }
     });
+  },
+
+  batchReadFromApi(req, res) {
+    let { start, end } = req.body;
+    start = moment(start, "YYYY-MM-DD");
+    end = moment(end, "YYYY-MM-DD");
+
+    rp.get(
+      `https://poloniex.com/public?' +
+      'command=returnChartData&currencyPair=USDT_BTC&' +
+      'start=${start.unix()}&end=${end.unix()}&period=86400`
+    )
+      .then(data => {
+        let createData = data.map(item => {
+          let date = moment.unix(item.date);
+          return { ...item, date: date };
+        });
+        Currency.bulkCreate(createData);
+        res.status(HTTP_STATUS_CODES.OK).json({
+          success: true
+        });
+      })
+      .catch(err => {
+        res
+          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+          .json({ success: false, err: err.message, stack: err.stack });
+      });
   }
 };
