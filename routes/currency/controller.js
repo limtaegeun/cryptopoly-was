@@ -5,6 +5,7 @@ const HTTP_STATUS_CODES = require("http-status-codes");
 const { Currency } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
+
 module.exports = {
   /**
    * get Currency with id
@@ -29,7 +30,7 @@ module.exports = {
     // todo : query should option but now required
     start = moment(start, "YYYY-MM-DD");
     end = moment(end, "YYYY-MM-DD");
-
+    console.log(req.query);
     let option = {
       order: [["date", "AES"]],
       date: {
@@ -102,7 +103,7 @@ module.exports = {
     });
   },
   /**
-   * delete lookbook
+   * delete chart data
    * @param req
    * @param res
    */
@@ -121,31 +122,36 @@ module.exports = {
       }
     });
   },
-
+  /**
+   * get data from api
+   * @param req
+   * @param res
+   */
   batchReadFromApi(req, res) {
-    let { start, end } = req.body;
-    start = moment(start, "YYYY-MM-DD");
-    end = moment(end, "YYYY-MM-DD");
-
+    let { start, end, currency } = req.query;
+    start = moment.utc(start, "YYYY-MM-DD");
+    end = moment.utc(end, "YYYY-MM-DD");
+    console.log(req.query, start.unix(), end.unix());
     rp.get(
-      `https://poloniex.com/public?' +
-      'command=returnChartData&currencyPair=USDT_BTC&' +
-      'start=${start.unix()}&end=${end.unix()}&period=86400`
-    )
-      .then(data => {
-        let createData = data.map(item => {
-          let date = moment.unix(item.date);
-          return { ...item, date: date };
-        });
-        Currency.bulkCreate(createData);
-        res.status(HTTP_STATUS_CODES.OK).json({
-          success: true
-        });
-      })
-      .catch(err => {
-        res
-          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-          .json({ success: false, err: err.message, stack: err.stack });
+      `https://poloniex.com/public?` +
+        `command=returnChartData&currencyPair=${currency}&` +
+        `start=${start.unix()}&end=${end.unix()}&period=86400`
+    ).then(data => {
+      console.log("data:", data);
+      data = JSON.parse(data);
+      let createData = data.map(item => {
+        let date = moment.unix(item.date);
+        return { ...item, date: date };
       });
+      Currency.bulkCreate(createData);
+      res.status(HTTP_STATUS_CODES.OK).json({
+        success: true
+      });
+    });
+    // .catch(err => {
+    //   res
+    //     .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+    //     .json({ success: false, err: err.message, stack: err.stack });
+    // });
   }
 };

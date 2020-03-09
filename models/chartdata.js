@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     "ChartData",
     {
       date: {
-        type: Sequelize.DATE,
+        type: DataTypes.DATE,
         unique: true
       },
       high: DataTypes.FLOAT,
