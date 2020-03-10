@@ -8,8 +8,12 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      code: {
+        type: Sequelize.STRING(10),
+        unique: true
+      },
       name: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(30)
       },
       txFee: {
         type: Sequelize.FLOAT
