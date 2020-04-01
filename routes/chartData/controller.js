@@ -12,20 +12,20 @@ module.exports = {
    * @param req
    * @param res
    */
-  getCurrency(req, res) {
+  getChartData(req, res) {
     let { id } = req.params;
 
-    Currency.findOne({
+    ChartData.findOne({
       where: {
         id: id
       }
-    }).then(currency => {
+    }).then(chartDatas => {
       res.status(HTTP_STATUS_CODES.OK).json({
-        data: currency
+        data: chartDatas
       });
     });
   },
-  retrieveCurrency(req, res) {
+  retrieveChartData(req, res) {
     let { start, end } = req.query;
     // todo : query should option but now required
     start = moment(start, "YYYY-MM-DD");
@@ -38,10 +38,10 @@ module.exports = {
       }
     };
 
-    Currency.findAll(option)
-      .then(currencies => {
+    ChartData.findAll(option)
+      .then(chartDatas => {
         res.status(HTTP_STATUS_CODES.OK).json({
-          data: currencies
+          data: chartDatas
         });
       })
       .catch(err => {
@@ -59,11 +59,11 @@ module.exports = {
    * @param req
    * @param res
    */
-  createCurrency(req, res) {
+  createChartData(req, res) {
     let body = req.body;
     console.log(body);
 
-    Currency.create(body)
+    ChartData.create(body)
       .then(function(result) {
         return res.status(200).json({ success: true, data: result });
       })
@@ -78,10 +78,10 @@ module.exports = {
    * @param req
    * @param res
    */
-  editCurrency(req, res) {
+  editChartData(req, res) {
     let body = req.body;
     // console.log(body);
-    Currency.findOne({ where: { id: body.id } }).then(function(obj) {
+    ChartData.findOne({ where: { id: body.id } }).then(function(obj) {
       if (obj) {
         // update
         obj
@@ -107,10 +107,10 @@ module.exports = {
    * @param req
    * @param res
    */
-  deleteCurrency(req, res) {
+  deleteChartData(req, res) {
     let body = req.body;
     // console.log(body);
-    Currency.findOne({ where: { id: body.id } }).then(obj => {
+    ChartData.findOne({ where: { id: body.id } }).then(obj => {
       if (obj) {
         obj.destroy().then(() => {
           res.status(200).json({ success: true });
@@ -122,19 +122,44 @@ module.exports = {
       }
     });
   },
-  batchGetCurrencyFromApi(req, res) {
-    rp.get(`https://poloniex.com/public?command=returnCurrencies`)
-      .then(data => {
-        data = JSON.parse(data);
-        console.log(data);
-        let currencies = [];
-        for (let [key, value] of Object.entries(data)) {
-          currencies.push({ code: key, ...value });
-        }
-        Currency.bulkCreate(currencies);
-        res.status(HTTP_STATUS_CODES.OK).json({
-          success: true
+  /**
+   * get data from api
+   * @param req
+   * @param res
+   */
+  batchGetChartDataFromApi(req, res) {
+    let { start, end, currencyPair } = req.query;
+    start = moment.utc(start, "YYYY-MM-DD");
+    end = moment.utc(end, "YYYY-MM-DD");
+    console.log(req.query, start.unix(), end.unix());
+    CurrencyPair.findOne({ where: { currencyPair: currencyPair } })
+      .then(matchPair => {
+        console.log(matchPair);
+        rp.get(
+          `https://poloniex.com/public?` +
+            `command=returnChartData&currencyPair=${currencyPair}&` +
+            `start=${start.unix()}&end=${end.unix()}&period=86400`
+        ).then(data => {
+          console.log("data:", data);
+          data = JSON.parse(data);
+          let createData = data.map(item => {
+            let date = moment.unix(item.date);
+            return {
+              ...item,
+              date: date,
+              CurrencyPairId: matchPair.id
+            };
+          });
+          ChartData.bulkCreate(createData);
+          res.status(HTTP_STATUS_CODES.OK).json({
+            success: true
+          });
         });
+        // .catch(err => {
+        //   res
+        //     .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+        //     .json({ success: false, err: err.message, stack: err.stack });
+        // });
       })
       .catch(err => {
         res
