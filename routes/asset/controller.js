@@ -2,7 +2,7 @@
 
 const express = require("express");
 const HTTP_STATUS_CODES = require("http-status-codes");
-const { Currency, CurrencyPair, ChartData } = require("../../models");
+const { Asset, CurrencyPair, ChartData } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
 
@@ -12,20 +12,20 @@ module.exports = {
    * @param req
    * @param res
    */
-  getCurrency(req, res) {
+  getAsset(req, res) {
     let { id } = req.params;
 
-    Currency.findOne({
+    Asset.findOne({
       where: {
         id: id
       }
-    }).then(currency => {
+    }).then(assets => {
       res.status(HTTP_STATUS_CODES.OK).json({
-        data: currency
+        data: assets
       });
     });
   },
-  retrieveCurrency(req, res) {
+  retrieveAsset(req, res) {
     let { start, end } = req.query;
     // todo : query should option but now required
     start = moment(start, "YYYY-MM-DD");
@@ -38,15 +38,15 @@ module.exports = {
       }
     };
 
-    Currency.findAll(option)
-      .then(currencies => {
+    Asset.findAll(option)
+      .then(assets => {
         res.status(HTTP_STATUS_CODES.OK).json({
-          data: currencies
+          data: assets
         });
       })
       .catch(err => {
         console.log(
-          "/currency ERROR : ",
+          "/asset ERROR : ",
           JSON.stringify({ success: false, err: err.message, stack: err.stack })
         );
         res
@@ -59,11 +59,11 @@ module.exports = {
    * @param req
    * @param res
    */
-  createCurrency(req, res) {
+  createAsset(req, res) {
     let body = req.body;
     console.log(body);
 
-    Currency.create(body)
+    Asset.create(body)
       .then(function(result) {
         return res.status(200).json({ success: true, data: result });
       })
@@ -78,10 +78,10 @@ module.exports = {
    * @param req
    * @param res
    */
-  editCurrency(req, res) {
+  editAsset(req, res) {
     let body = req.body;
     // console.log(body);
-    Currency.findOne({ where: { id: body.id } }).then(function(obj) {
+    Asset.findOne({ where: { id: body.id } }).then(function(obj) {
       if (obj) {
         // update
         obj
@@ -107,10 +107,10 @@ module.exports = {
    * @param req
    * @param res
    */
-  deleteCurrency(req, res) {
+  deleteAsset(req, res) {
     let body = req.body;
     // console.log(body);
-    Currency.findOne({ where: { id: body.id } }).then(obj => {
+    Asset.findOne({ where: { id: body.id } }).then(obj => {
       if (obj) {
         obj.destroy().then(() => {
           res.status(200).json({ success: true });
@@ -122,16 +122,16 @@ module.exports = {
       }
     });
   },
-  batchGetCurrencyFromApi(req, res) {
+  batchGetAssetFromApi(req, res) {
     rp.get(`https://poloniex.com/public?command=returnCurrencies`)
       .then(data => {
         data = JSON.parse(data);
         console.log(data);
-        let currencies = [];
+        let assets = [];
         for (let [key, value] of Object.entries(data)) {
-          currencies.push({ code: key, ...value });
+          assets.push({ code: key, ...value });
         }
-        Currency.bulkCreate(currencies);
+        Asset.bulkCreate(assets);
         res.status(HTTP_STATUS_CODES.OK).json({
           success: true
         });

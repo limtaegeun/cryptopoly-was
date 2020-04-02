@@ -8,7 +8,11 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      date: {
+      timeStart: {
+        type: Sequelize.DATE,
+        unique: true
+      },
+      timeEnd: {
         type: Sequelize.DATE,
         unique: true
       },
@@ -27,11 +31,8 @@ module.exports = {
       volume: {
         type: Sequelize.FLOAT
       },
-      quoteVolume: {
-        type: Sequelize.FLOAT
-      },
-      weightedAverage: {
-        type: Sequelize.FLOAT
+      tradesCount: {
+        type: Sequelize.INTEGER
       },
       CurrencyPairId: {
         type: Sequelize.INTEGER,

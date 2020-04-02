@@ -1,7 +1,7 @@
 "use strict";
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable("Currencies", {
+    return queryInterface.createTable("Assets", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -15,12 +15,14 @@ module.exports = {
       name: {
         type: Sequelize.STRING(30)
       },
-      txFee: {
-        type: Sequelize.FLOAT
+      icon: {
+        type: Sequelize.STRING
       },
-      minConf: {
-        type: Sequelize.INTEGER
+      isCrypto: {
+        type: Sequelize.BOOLEAN
       },
+      dataStart: { type: Sequelize.DATE },
+      dataEnd: { type: Sequelize.DATE },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
@@ -32,6 +34,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable("Currencies");
+    return queryInterface.dropTable("Assets");
   }
 };

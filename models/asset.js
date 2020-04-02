@@ -1,7 +1,7 @@
 "use strict";
 module.exports = (sequelize, DataTypes) => {
-  const Currency = sequelize.define(
-    "Currency",
+  const Asset = sequelize.define(
+    "Asset",
     {
       code: {
         type: DataTypes.STRING(10),
@@ -9,13 +9,16 @@ module.exports = (sequelize, DataTypes) => {
       },
       name: DataTypes.STRING(30),
       txFee: DataTypes.FLOAT,
+      isCrypto: DataTypes.BOOLEAN,
+      dataStart: DataTypes.DATE,
+      dataEnd: DataTypes.DATE,
       minConf: DataTypes.INTEGER
     },
     {}
   );
-  Currency.associate = function(models) {
+  Asset.associate = function(models) {
     // associations can be defined here
-    Currency.hasMany(models.CurrencyPair);
+    Asset.hasMany(models.CurrencyPair);
   };
-  return Currency;
+  return Asset;
 };

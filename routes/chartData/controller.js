@@ -46,7 +46,7 @@ module.exports = {
       })
       .catch(err => {
         console.log(
-          "/currency ERROR : ",
+          "/asset ERROR : ",
           JSON.stringify({ success: false, err: err.message, stack: err.stack })
         );
         res
