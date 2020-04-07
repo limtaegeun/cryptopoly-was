@@ -1,0 +1,4 @@
+{
+  "assets" : "https://rest.coinapi.io/v1/assets",
+  "icons" : "https://rest.coinapi.io/v1/assets/icons/300"
+}

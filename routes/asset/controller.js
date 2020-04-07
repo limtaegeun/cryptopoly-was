@@ -5,7 +5,9 @@ const HTTP_STATUS_CODES = require("http-status-codes");
 const { Asset, CurrencyPair, ChartData } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
-
+const apiKey = require("../../config/coinapi.json").key;
+const url = require("../../constant/url.json");
+const _ = require("lodash");
 module.exports = {
   /**
    * get Currency with id
@@ -123,17 +125,25 @@ module.exports = {
     });
   },
   batchGetAssetFromApi(req, res) {
-    rp.get(`https://poloniex.com/public?command=returnCurrencies`)
-      .then(data => {
-        data = JSON.parse(data);
-        console.log(data);
-        let assets = [];
-        for (let [key, value] of Object.entries(data)) {
-          assets.push({ code: key, ...value });
-        }
-        Asset.bulkCreate(assets);
-        res.status(HTTP_STATUS_CODES.OK).json({
-          success: true
+    let options = {
+      uri: url.assets,
+      headers: {
+        "X-CoinAPI-Key": apiKey
+      },
+      json: true
+    };
+    rp.get(options)
+      .then(assets => {
+        // console.log(assets);
+        // console.log(icons);
+        let parsedData = parseAssets(assets);
+        let uniqe = _.uniqWith(parsedData, (a, b) => a.code === b.code);
+        // console.log(uniqe);
+
+        Asset.bulkCreate(uniqe).then(() => {
+          return res.status(HTTP_STATUS_CODES.OK).json({
+            success: true
+          });
         });
       })
       .catch(err => {
@@ -143,3 +153,27 @@ module.exports = {
       });
   }
 };
+
+function parseAssets(assets) {
+  return assets
+    .map(asset => {
+      let fileName = asset.id_icon
+        ? asset.id_icon.replace("-", "") + ".png"
+        : "";
+      let icon = fileName
+        ? "https://s3.eu-central-1.amazonaws.com/bbxt-static-icons/type-id/png_512/" +
+          fileName
+        : "";
+      return {
+        code: asset.asset_id,
+        name: asset.name,
+        icon: icon,
+        isCrypto: asset.type_is_crypto,
+        dataStart: asset.data_start,
+        dataEnd: asset.data_end
+      };
+    })
+    .filter(el => {
+      return el.code !== undefined && el.name !== undefined;
+    });
+}

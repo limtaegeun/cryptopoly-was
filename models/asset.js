@@ -4,15 +4,14 @@ module.exports = (sequelize, DataTypes) => {
     "Asset",
     {
       code: {
-        type: DataTypes.STRING(10),
+        type: DataTypes.STRING(20),
         unique: true
       },
       name: DataTypes.STRING(30),
-      txFee: DataTypes.FLOAT,
+      icon: DataTypes.STRING,
       isCrypto: DataTypes.BOOLEAN,
       dataStart: DataTypes.DATE,
-      dataEnd: DataTypes.DATE,
-      minConf: DataTypes.INTEGER
+      dataEnd: DataTypes.DATE
     },
     {}
   );
