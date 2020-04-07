@@ -5,6 +5,7 @@ const HTTP_STATUS_CODES = require("http-status-codes");
 const { Currency, CurrencyPair, ChartData } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
+const methods = require("./methods");
 
 module.exports = {
   /**
@@ -128,38 +129,27 @@ module.exports = {
    * @param res
    */
   batchGetChartDataFromApi(req, res) {
-    let { start, end, currencyPair } = req.query;
+    let { start, end, base, quote, exchange, period } = req.query;
     start = moment.utc(start, "YYYY-MM-DD");
     end = moment.utc(end, "YYYY-MM-DD");
     console.log(req.query, start.unix(), end.unix());
-    CurrencyPair.findOne({ where: { currencyPair: currencyPair } })
+    CurrencyPair.findOne({ where: { baseID: base, quoteID: quote } })
       .then(matchPair => {
         console.log(matchPair);
-        rp.get(
-          `https://poloniex.com/public?` +
-            `command=returnChartData&currencyPair=${currencyPair}&` +
-            `start=${start.unix()}&end=${end.unix()}&period=86400`
-        ).then(data => {
-          console.log("data:", data);
-          data = JSON.parse(data);
-          let createData = data.map(item => {
-            let date = moment.unix(item.date);
-            return {
-              ...item,
-              date: date,
-              CurrencyPairId: matchPair.id
-            };
-          });
-          ChartData.bulkCreate(createData);
-          res.status(HTTP_STATUS_CODES.OK).json({
-            success: true
-          });
+        switch (exchange) {
+          case "poloniex":
+            return methods.chartFromPoloniex(start, end, period, matchPair);
+          default:
+            return methods.chartFromPoloniex(start, end, period, matchPair);
+        }
+      })
+      .then(createData => {
+        return ChartData.bulkCreate(createData);
+      })
+      .then(() => {
+        res.status(HTTP_STATUS_CODES.OK).json({
+          success: true
         });
-        // .catch(err => {
-        //   res
-        //     .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-        //     .json({ success: false, err: err.message, stack: err.stack });
-        // });
       })
       .catch(err => {
         res
