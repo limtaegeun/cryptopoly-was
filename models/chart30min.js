@@ -1,7 +1,7 @@
 "use strict";
 module.exports = (sequelize, DataTypes) => {
-  const ChartData = sequelize.define(
-    "ChartData",
+  const Chart30min = sequelize.define(
+    "Chart30min",
     {
       date: {
         type: DataTypes.DATE,
@@ -12,14 +12,12 @@ module.exports = (sequelize, DataTypes) => {
       open: DataTypes.FLOAT,
       close: DataTypes.FLOAT,
       volume: DataTypes.FLOAT,
-      quoteVolume: DataTypes.FLOAT,
-      weightedAverage: DataTypes.FLOAT
+      tradesCount: DataTypes.INTEGER
     },
     {}
   );
-  ChartData.associate = function(models) {
+  Chart30min.associate = function(models) {
     // associations can be defined here
-    ChartData.belongsTo(models.CurrencyPair);
   };
-  return ChartData;
+  return Chart30min;
 };

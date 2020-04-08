@@ -1,18 +1,14 @@
 "use strict";
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable("ChartData", {
+    return queryInterface.createTable("Chart30mins", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      timeStart: {
-        type: Sequelize.DATE,
-        unique: true
-      },
-      timeEnd: {
+      date: {
         type: Sequelize.DATE,
         unique: true
       },
@@ -54,6 +50,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable("ChartData");
+    return queryInterface.dropTable("Chart30mins");
   }
 };

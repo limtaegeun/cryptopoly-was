@@ -4,7 +4,7 @@ let router = express.Router();
 const controller = require("./controller");
 
 router.get("/", controller.retrieveChartData);
-router.get("/batch/chart", controller.batchGetChartDataFromApi);
+router.get("/batch", controller.batchGetChartDataFromApi);
 router.get("/:id", controller.getChartData);
 router.post("/new", controller.createChartData);
 router.patch("/edit", controller.editChartData);

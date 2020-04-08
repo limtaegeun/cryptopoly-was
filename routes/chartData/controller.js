@@ -2,7 +2,7 @@
 
 const express = require("express");
 const HTTP_STATUS_CODES = require("http-status-codes");
-const { Currency, CurrencyPair, ChartData } = require("../../models");
+const { Asset, CurrencyPair, Chart1D } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
 const methods = require("./methods");
@@ -143,18 +143,25 @@ module.exports = {
             return methods.chartFromPoloniex(start, end, period, matchPair);
         }
       })
-      .then(createData => {
-        return ChartData.bulkCreate(createData);
+      .then(({ createData, period }) => {
+        switch (period) {
+          case "1D":
+            return methods.chart1DUpsert(createData);
+          case "30m":
+            return methods.chart30minUpsert(createData);
+          default:
+            throw "undefine period Error";
+        }
       })
       .then(() => {
         res.status(HTTP_STATUS_CODES.OK).json({
           success: true
         });
-      })
-      .catch(err => {
-        res
-          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-          .json({ success: false, err: err.message, stack: err.stack });
       });
+    // .catch(err => {
+    //   res
+    //     .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+    //     .json({ success: false, err: err.message, stack: err.stack });
+    // });
   }
 };

@@ -15,7 +15,8 @@ module.exports = (sequelize, DataTypes) => {
   );
   CurrencyPair.associate = function(models) {
     // associations can be defined here
-    CurrencyPair.hasMany(models.ChartData);
+    CurrencyPair.hasMany(models.Chart1D);
+    CurrencyPair.hasMany(models.Chart30min);
     CurrencyPair.belongsTo(models.Asset);
   };
   return CurrencyPair;
