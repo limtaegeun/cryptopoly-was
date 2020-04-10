@@ -28,7 +28,6 @@ module.exports = {
   },
   retrieveChartData(req, res) {
     let { start, end } = req.query;
-    // todo : query should option but now required
     start = moment(start, "YYYY-MM-DD");
     end = moment(end, "YYYY-MM-DD");
     console.log(req.query);
