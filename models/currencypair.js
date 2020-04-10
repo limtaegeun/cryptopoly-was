@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     CurrencyPair.hasMany(models.Chart1D);
     CurrencyPair.hasMany(models.Chart30min);
     CurrencyPair.belongsTo(models.Asset);
+    CurrencyPair.hasMany(models.PredictChart);
   };
   return CurrencyPair;
 };
