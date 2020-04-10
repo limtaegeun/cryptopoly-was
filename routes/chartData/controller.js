@@ -157,11 +157,11 @@ module.exports = {
         res.status(HTTP_STATUS_CODES.OK).json({
           success: true
         });
+      })
+      .catch(err => {
+        res
+          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+          .json({ success: false, err: err.message, stack: err.stack });
       });
-    // .catch(err => {
-    //   res
-    //     .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-    //     .json({ success: false, err: err.message, stack: err.stack });
-    // });
   }
 };
