@@ -1,4 +1,8 @@
 {
   "assets" : "https://rest.coinapi.io/v1/assets",
-  "icons" : "https://rest.coinapi.io/v1/assets/icons/300"
+  "icons" : "https://rest.coinapi.io/v1/assets/icons/300",
+  "mlApi": {
+    "local" :"http://127.0.0.1:8000",
+    "prod": "http://ml.cryptopoly.com"
+  }
 }
