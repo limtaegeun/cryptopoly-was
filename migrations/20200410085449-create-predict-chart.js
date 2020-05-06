@@ -13,19 +13,19 @@ module.exports = {
         primaryKey: true
       },
       high: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       low: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       open: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       close: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       volume: {
-        type: Sequelize.FLOAT
+        type: Sequelize.INTEGER
       },
       tradesCount: {
         type: Sequelize.INTEGER

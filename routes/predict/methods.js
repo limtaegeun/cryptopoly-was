@@ -16,7 +16,9 @@ module.exports = {
   requestPredict,
   getSamePeriod,
   getPredictedAndToPredict,
-  getChartData
+  getChartData,
+  parseToLTCM,
+  upsertPredictByDate
 };
 
 /**
@@ -81,16 +83,6 @@ function getSamePeriod(target, period) {
     start: moment.unix(parseInt(utcSec / period) * period),
     end: moment.unix(parseInt(utcSec / period) * period + period - 0.001)
   };
-}
-
-/**
- *
- * @param date {object} - { start , end}
- * @param period
- */
-function upsertPredictByDate(date, period) {
-  let start = moment.unix(date.start);
-  let end = moment.unix(date.end);
 }
 
 /**
@@ -229,6 +221,22 @@ function getChartData(start, end, period, now = undefined) {
     }
   });
 }
+
+/**
+ * request ML server and upsert predcit data
+ * @param date {object} - { start : int , end : int} utc timestamp
+ * @param period
+ */
+function upsertPredictByDate(date, period) {
+  let start = moment.unix(date.start);
+  let end = moment.unix(date.end);
+}
+
+/**
+ * parse to LTCM predict data
+ * @param dbData
+ */
+function parseToLTCM(dbData) {}
 
 function requestPredict(data, period) {
   let form = data;

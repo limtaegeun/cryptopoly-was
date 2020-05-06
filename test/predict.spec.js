@@ -46,17 +46,39 @@ describe("predict test", function() {
           });
         });
     });
-    it("should return expected chart data :getChartData ", function() {
+    describe("request ML predict methods", function() {
+      let resultOfgetChartData;
+      it("should return expected chart data :getChartData ", function() {
+        return methods
+          .getChartData(
+            moment("2020-03-30").unix(),
+            moment("2020-04-03").unix(),
+            86400,
+            "2020-04-01T02"
+          )
+          .then(result => {
+            console.log(result);
+            resultOfgetChartData = result;
+            result.should.have.lengthOf(5);
+          });
+      });
+      it("parse to LTCM predict data", function() {
+        let result = methods.parseToLTCM(resultOfgetChartData);
+        result.should.eql([[6393.92, 6410.98, 6644, 6656, 6890]]);
+      });
+    });
+    it("should return expected predict data: requestWithDate", function() {
       return methods
-        .getChartData(
-          moment("2020-03-30").unix(),
-          moment("2020-04-03").unix(),
-          86400,
-          "2020-04-01T02"
+        .upsertPredictByDate(
+          {
+            start: moment("2020-04-04").unix(),
+            end: moment("2020-04-08").unix()
+          },
+          86400
         )
         .then(result => {
           console.log(result);
-          result.should.have.lengthOf(5);
+          result.should.hae.lengthOf(5);
         });
     });
   });
