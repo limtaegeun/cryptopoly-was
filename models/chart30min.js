@@ -7,11 +7,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         unique: true
       },
-      high: DataTypes.FLOAT,
-      low: DataTypes.FLOAT,
-      open: DataTypes.FLOAT,
-      close: DataTypes.FLOAT,
-      volume: DataTypes.FLOAT,
+      high: DataTypes.DOUBLE,
+      low: DataTypes.DOUBLE,
+      open: DataTypes.DOUBLE,
+      close: DataTypes.DOUBLE,
+      volume: DataTypes.INTEGER,
       tradesCount: DataTypes.INTEGER
     },
     {}

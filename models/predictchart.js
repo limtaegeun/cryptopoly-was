@@ -13,24 +13,12 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         primaryKey: true
       },
-      high: {
-        type: DataTypes.FLOAT
-      },
-      low: {
-        type: DataTypes.FLOAT
-      },
-      open: {
-        type: DataTypes.FLOAT
-      },
-      close: {
-        type: DataTypes.FLOAT
-      },
-      volume: {
-        type: DataTypes.FLOAT
-      },
-      tradesCount: {
-        type: DataTypes.INTEGER
-      }
+      high: DataTypes.DOUBLE,
+      low: DataTypes.DOUBLE,
+      open: DataTypes.DOUBLE,
+      close: DataTypes.DOUBLE,
+      volume: DataTypes.INTEGER,
+      tradesCount: DataTypes.INTEGER
     },
     {}
   );
