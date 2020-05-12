@@ -17,14 +17,16 @@ describe("predict test", function() {
       console.log(result.start.toISOString(), result.end.toISOString());
       expect(
         result.start.toISOString() ===
-          moment("2020-04-01")
+          moment
+            .utc("2020-04-01")
             .utc()
             .startOf("day")
             .toISOString()
       ).to.be.true;
       expect(
         result.end.toISOString() ===
-          moment("2020-04-01")
+          moment
+            .utc("2020-04-01")
             .utc()
             .endOf("day")
             .toISOString()
@@ -33,16 +35,16 @@ describe("predict test", function() {
     it("should return expected predict data : getPredictedAndToPredict", function() {
       return methods
         .getPredictedAndToPredict(
-          moment("2020-04-01"),
-          moment("2020-04-05"),
+          moment.utc("2020-04-01"),
+          moment.utc("2020-04-05"),
           86400
         )
         .then(result => {
           // console.log(result);
           expect(result.data).to.lengthOf(3);
           expect(result.upsert).to.eql({
-            start: moment("2020-04-04").unix(),
-            end: moment("2020-04-05").unix()
+            start: moment.utc("2020-04-04").unix(),
+            end: moment.utc("2020-04-05").unix()
           });
         });
     });
@@ -51,8 +53,8 @@ describe("predict test", function() {
       it("should return expected chart data :getChartData ", function() {
         return methods
           .getChartData(
-            moment("2020-03-30").unix(),
-            moment("2020-04-03").unix(),
+            moment.utc("2020-03-30").unix(),
+            moment.utc("2020-04-03").unix(),
             86400,
             "2020-04-01T02"
           )
@@ -64,21 +66,35 @@ describe("predict test", function() {
       });
       it("parse to LTCM predict data", function() {
         let result = methods.parseToLTCM(resultOfgetChartData);
-        result.should.eql([[6393.92, 6410.98, 6644, 6656, 6890]]);
+        console.log(result);
+        result.should.eql(
+          "[[6393.91728904,6410.98220921,6643.99644607,6656,6890]]"
+        );
       });
     });
+    it("should return expected length of period : getLengthOfPeriod ", function() {
+      let result = methods.getLengthOfPeriod(
+        moment.utc("2020-04-04").unix(),
+        moment.utc("2020-04-08").unix(),
+        86400
+      );
+      console.log("result:", result);
+      result.should.equal(4);
+    });
     it("should return expected predict data: requestWithDate", function() {
+      this.timeout(10000);
       return methods
         .upsertPredictByDate(
           {
-            start: moment("2020-04-04").unix(),
-            end: moment("2020-04-08").unix()
+            start: moment.utc("2020-04-04").unix(),
+            end: moment.utc("2020-04-08").unix()
           },
-          86400
+          86400,
+          "2020-04-01T02"
         )
         .then(result => {
           console.log(result);
-          result.should.hae.lengthOf(5);
+          result.should.have.lengthOf(5);
         });
     });
   });
