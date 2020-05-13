@@ -20,7 +20,8 @@ module.exports = {
   getChartData,
   parseToLTCM,
   upsertPredictByDate,
-  getLengthOfPeriod
+  getLengthOfPeriod,
+  getTimeOfPeriod
 };
 
 /**
@@ -228,49 +229,41 @@ function getChartData(start, end, period, now = undefined) {
  * request ML server and upsert predcit data
  * @param date {object} - Date range that need to upsert predict Data { start : int , end : int} utc timestamp
  * @param period {int}
+ * @param pairId {int} - CurrencyPairId
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
-function upsertPredictByDate(date, period, now = undefined) {
+function upsertPredictByDate(date, period, pairId, now = undefined) {
   return new Promise((resolve, reject) => {
     let start = moment.unix(date.start);
-    let end = moment.unix(date.end);
+    // let end = moment.unix(date.end);
 
+    // todo :  fix it use period
     let searchStart = start.clone().subtract(5, "days");
     let searchEnd = start.clone().subtract(1, "day");
 
     getChartData(searchStart.unix(), searchEnd.unix(), period, now).then(
       source => {
-        console.log(source);
+        // console.log(source);
         let parsedSource = parseToLTCM(source);
         // todo : 각 task에서는  예측 요청하고 upsert한다음 return
-
-        let task = [
-          callback => {
-            requestPredict(parsedSource, period).then(predicted => {
-              console.log("1", "source: ", parsedSource, "result :", predicted);
-              callback(null, {
-                predicted: predicted,
-                source: parsedSource,
-                acc: JSON.parse(predicted)
-              });
+        let initCloser = callback => {
+          requestPredict(parsedSource, period).then(predicted => {
+            console.log("1", "source: ", parsedSource, "result :", predicted);
+            callback(null, {
+              predicted: predicted,
+              source: parsedSource,
+              acc: JSON.parse(predicted)
             });
-          }
-        ];
-
+          });
+        };
+        let task = [initCloser];
         let lengthOfPredict = getLengthOfPeriod(date.start, date.end, period);
-        console.log("lengthOfPredict: ", lengthOfPredict);
+
         for (let i = 0; i < lengthOfPredict; i++) {
-          console.log(i);
-          task.push((result, callback) => {
-            console.log(result);
+          let asyncCloser = (result, callback) => {
+            // console.log(result);
             let source = JSON.parse(result.source)[0];
             source.splice(0, 1);
-            console.log(
-              "source:",
-              source,
-              "result:",
-              JSON.parse(result.predicted)[0][0]
-            );
             source.push(JSON.parse(result.predicted)[0][0]);
             source = [source];
             requestPredict(JSON.stringify(source), period).then(predicted => {
@@ -281,12 +274,48 @@ function upsertPredictByDate(date, period, now = undefined) {
                 acc: result.acc.concat(JSON.parse(predicted))
               });
             });
-          });
+          };
+          task.push(asyncCloser);
         }
-        console.log(task);
+        // console.log(task);
         async.waterfall(task, (err, result) => {
           if (err) reject(err);
-          resolve(result.acc);
+          let periodStart = getTimeOfPeriod(date.start, date.end, period).start;
+          let createData = result.acc.map((item, idx) => {
+            return {
+              date: moment.unix(periodStart + period * idx),
+              period: period,
+              close: item,
+              CurrencyPairId: pairId
+            };
+          });
+          PredictChart.bulkCreate(createData, {
+            fields: [
+              "date",
+              "period",
+              "high",
+              "low",
+              "open",
+              "close",
+              "volume",
+              "tradesCount",
+              "CurrencyPairId"
+            ],
+            updateOnDuplicate: [
+              "high",
+              "low",
+              "open",
+              "close",
+              "volume",
+              "tradesCount"
+            ]
+          })
+            .then(() => {
+              resolve(result.acc);
+            })
+            .catch(err => {
+              reject(err);
+            });
         });
       }
     );
@@ -329,13 +358,25 @@ function requestPredict(data, period) {
 
 /**
  * start 와 end 사이 period 개수 반환
- * @param start
- * @param end
+ * @param start {int} - utc sec timestamp
+ * @param end {int} - utc sec timestamp
+ * @param period {int} - period by second
  */
 function getLengthOfPeriod(start, end, period) {
   let periodStart = start + ((period - (start % period)) % period);
   let periodEnd = end - (start % period);
   return Math.abs((periodEnd - periodStart) / period);
+}
+/**
+ * start 와 end 내부 period 양 끝 time 반환
+ * @param start {int} - utc sec timestamp
+ * @param end {int} - utc sec timestamp
+ * @param period {int} - period by second
+ */
+function getTimeOfPeriod(start, end, period) {
+  let periodStart = start + ((period - (start % period)) % period);
+  let periodEnd = end - (start % period);
+  return { start: periodStart, end: periodEnd };
 }
 
 function getMLApiUrl() {

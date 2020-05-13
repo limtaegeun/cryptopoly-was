@@ -74,12 +74,22 @@ describe("predict test", function() {
     });
     it("should return expected length of period : getLengthOfPeriod ", function() {
       let result = methods.getLengthOfPeriod(
-        moment.utc("2020-04-04").unix(),
+        moment.utc("2020-04-03T04").unix(),
         moment.utc("2020-04-08").unix(),
         86400
       );
       console.log("result:", result);
       result.should.equal(4);
+    });
+    it("should return expected time of period : getTimeOfPeriod ", function() {
+      let result = methods.getTimeOfPeriod(
+        moment.utc("2020-04-04").unix(),
+        moment.utc("2020-04-08").unix(),
+        86400
+      );
+      console.log("result:", result);
+      result.start.should.equal(moment.utc("2020-04-04").unix());
+      result.end.should.equal(moment.utc("2020-04-08").unix());
     });
     it("should return expected predict data: requestWithDate", function() {
       this.timeout(10000);
@@ -90,6 +100,7 @@ describe("predict test", function() {
             end: moment.utc("2020-04-08").unix()
           },
           86400,
+          1,
           "2020-04-01T02"
         )
         .then(result => {
