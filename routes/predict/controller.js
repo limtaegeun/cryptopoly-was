@@ -67,13 +67,22 @@ module.exports = {
     });
   },
   batchGetPredict(req, res) {
-    let { start, end, period, base, quote } = req.body;
-    console.log(getMLApiUrl() + "/predict");
-    let realData = {
-      data:
-        "[[9132.39096122,8891.51753701,8032.01789601,7930.30000002,7891.25967057]]"
-    };
-    PredictChart.findAll({ where: {} });
+    let { start, end, period, pairId } = req.body;
+    methods
+      .upsertPredictByDate(
+        {
+          start: moment.utc(start).unix(),
+          end: moment.utc(end).unix()
+        },
+        period,
+        pairId
+      )
+      .then(predicted => {
+        console.log(predicted);
+        res.status(HTTP_STATUS_CODES.OK).json({
+          data: period
+        });
+      });
   }
 };
 
