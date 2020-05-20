@@ -37,7 +37,8 @@ describe("predict test", function() {
         .getPredictedAndToPredict(
           moment.utc("2020-04-01"),
           moment.utc("2020-04-05"),
-          86400
+          86400,
+          "2020-04-01"
         )
         .then(result => {
           // console.log(result);
@@ -45,6 +46,23 @@ describe("predict test", function() {
           expect(result.upsert).to.eql({
             start: moment.utc("2020-04-04").unix(),
             end: moment.utc("2020-04-05").unix()
+          });
+        });
+    });
+    it("when predict data is null : getPredictedAndToPredict", function() {
+      return methods
+        .getPredictedAndToPredict(
+          moment.utc("2020-04-01"),
+          moment.utc("2020-04-03"),
+          86400,
+          "2020-04-05"
+        )
+        .then(result => {
+          // console.log(result);
+          expect(result.data).is.null;
+          expect(result.upsert).to.eql({
+            start: moment.utc("2020-04-01").unix(),
+            end: moment.utc("2020-04-03").unix()
           });
         });
     });

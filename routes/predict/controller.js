@@ -8,6 +8,7 @@ const rp = require("request-promise");
 const apiKey = require("../../config/coinapi.json").key;
 const url = require("../../constant/url.json");
 const _ = require("lodash");
+import methods from "./methods";
 module.exports = {
   getPredict(req, res) {
     let { id } = req.params;
@@ -23,81 +24,27 @@ module.exports = {
     });
   },
   retrievePredict(req, res) {
-    let { start, end } = req.query;
-    // todo : query should option but now required
-    start = moment(start, "YYYY-MM-DD");
-    end = moment(end, "YYYY-MM-DD");
-    console.log(req.query);
-    let option = {
-      order: [["date", "AES"]],
-      date: {
-        $between: [start.toISOString(true), end.toISOString(true)]
-      }
-    };
+    let { start, end, period } = req.query;
 
-    PredictChart.findAll(option)
-      .then(predicts => {
-        res.status(HTTP_STATUS_CODES.OK).json({
-          data: predicts
-        });
-      })
-      .catch(err => {
-        console.log(
-          "/asset ERROR : ",
-          JSON.stringify({ success: false, err: err.message, stack: err.stack })
-        );
-        res
-          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-          .json({ success: false, err: err.message, stack: err.stack });
-      });
-  },
-  /**
-   * create lookbook
-   * @param req
-   * @param res
-   */
-  createPredict(req, res) {
-    let body = req.body;
-    console.log(body);
-
-    PredictChart.create(body)
-      .then(function(result) {
-        return res.status(200).json({ success: true, data: result });
-      })
-      .catch(function(err) {
-        return res
-          .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-          .json({ success: false, err: err.message, stack: err.stack });
-      });
-  },
-  /**
-   * edit lookbook
-   * @param req
-   * @param res
-   */
-  updatePredict(req, res) {
-    let body = req.body;
-    // console.log(body);
-    PredictChart.findOne({ where: { id: body.id } }).then(function(obj) {
-      if (obj) {
-        // update
-        obj
-          .update(body)
-          .then(function(result) {
-            res.status(200).json({ success: true, data: result });
-          })
-          .catch(function(err) {
-            res
-              .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
-              .json({ success: false, err: err.message, stack: err.stack });
+    methods
+      .getPredictedAndToPredict(moment.utc(start), moment.utc(end), period)
+      .then(real => {
+        // console.log(result);
+        if (real.upsert) {
+          methods.upsertPredictByDate(real.upsert, 86400, 1).then(predicted => {
+            console.log(real.data);
+            console.log(predicted);
+            res.status(HTTP_STATUS_CODES.OK).json({
+              data: real.data.concat(predicted)
+            });
           });
-      } else {
-        // insert
-        res
-          .status(HTTP_STATUS_CODES.BAD_REQUEST)
-          .json({ success: false, err: "invalid code" });
-      }
-    });
+        } else {
+          console.log(real.data);
+          res.status(HTTP_STATUS_CODES.OK).json({
+            data: real.data
+          });
+        }
+      });
   },
   /**
    * delete chart data

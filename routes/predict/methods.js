@@ -29,10 +29,11 @@ module.exports = {
  * @param start {moment}
  * @param end {moment}
  * @param period {int}
+ * @param now {string | undefined} - 'YYYY-MM-DD'
  */
-function getPredictedAndToPredict(start, end, period) {
+function getPredictedAndToPredict(start, end, period, now = undefined) {
   return new Promise((resolve, reject) => {
-    let periodRange = getSamePeriod(moment("2020-04-01"), period);
+    let periodRange = getSamePeriod(moment(now), period);
     PredictChart.findAll({
       where: {
         date: {
@@ -40,10 +41,7 @@ function getPredictedAndToPredict(start, end, period) {
         },
         period: period,
         updatedAt: {
-          [Op.between]: [
-            periodRange.start.toISOString(),
-            periodRange.end.toISOString()
-          ]
+          [Op.gt]: periodRange.start.toISOString()
         }
       }
     }).then(data => {
@@ -57,6 +55,14 @@ function getPredictedAndToPredict(start, end, period) {
         // 이름이 같을 경우
         return 0;
       });
+      if (data.length < 1) {
+        let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
+        resolve({
+          data: null,
+          upsert: { start: timeOfPeriod.start, end: end.unix() }
+        });
+        return;
+      }
       let last = data[data.length - 1];
       console.log(last);
       console.log(moment(last.date).unix(), end.unix());
@@ -226,7 +232,7 @@ function getChartData(start, end, period, now = undefined) {
 }
 
 /**
- * request ML server and upsert predcit data
+ * request ML server and upsert predict data
  * @param date {object} - Date range that need to upsert predict Data { start : int , end : int} utc timestamp
  * @param period {int}
  * @param pairId {int} - CurrencyPairId
@@ -245,7 +251,6 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
       source => {
         // console.log(source);
         let parsedSource = parseToLTCM(source);
-        // todo : 각 task에서는  예측 요청하고 upsert한다음 return
         let initCloser = callback => {
           requestPredict(parsedSource, period).then(predicted => {
             console.log("1", "source: ", parsedSource, "result :", predicted);
@@ -311,7 +316,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
             ]
           })
             .then(() => {
-              resolve(result.acc);
+              resolve(createData);
             })
             .catch(err => {
               reject(err);
@@ -372,6 +377,7 @@ function getLengthOfPeriod(start, end, period) {
  * @param start {int} - utc sec timestamp
  * @param end {int} - utc sec timestamp
  * @param period {int} - period by second
+ * @return {object} - {start : int, end : int} utc sec timestamp data
  */
 function getTimeOfPeriod(start, end, period) {
   let periodStart = start + ((period - (start % period)) % period);
