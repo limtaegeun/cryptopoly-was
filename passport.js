@@ -1,6 +1,8 @@
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
+const crypto = require("crypto");
 const { User } = require("./models");
+const pwdConfig = require("./config/crypto.json");
 
 module.exports = () => {
   passport.serializeUser((user, done) => {
@@ -39,4 +41,21 @@ module.exports = () => {
   );
 };
 
-function comparePassword() {}
+function comparePassword(user, password, callback) {
+  crypto.pbkdf2(
+    password,
+    user.salt,
+    pwdConfig.pwd.iterations,
+    pwdConfig.pwd.keylen,
+    pwdConfig.pwd.digest,
+    (err, key) => {
+      const hashedPwd = key.toString("base64");
+      console.log(hashedPwd);
+      if (user.password === hashedPwd) {
+        callback(null, true);
+      } else {
+        callback("unMatch", null);
+      }
+    }
+  );
+}

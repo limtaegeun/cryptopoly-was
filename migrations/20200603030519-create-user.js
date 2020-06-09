@@ -9,14 +9,17 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       email: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(50),
         unique: true
       },
       username: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(20)
       },
       password: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(70)
+      },
+      salt: {
+        type: Sequelize.STRING(70)
       },
       memberDueDate: {
         type: Sequelize.DATE
