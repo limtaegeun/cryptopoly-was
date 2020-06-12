@@ -38,7 +38,7 @@ app.use(
 ); // 세션 활성화
 app.use(passport.initialize()); // passport 구동
 app.use(passport.session()); // 세션 연결
-passportConfig(); // 이 부분 추가
+passportConfig(); // passport 설정
 
 console.log("port: ", process.env.PORT, "mode: ", process.env.NODE_ENV);
 
