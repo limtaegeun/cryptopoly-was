@@ -12,12 +12,10 @@ import methods from "./methods";
 module.exports = {
   login(req, res) {
     let body = req.body;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        user: { email: req.user.email, username: req.user.username }
-      });
+    return res.status(200).json({
+      success: true,
+      user: { email: req.user.email, username: req.user.username }
+    });
   },
   signUp(req, res) {
     let body = req.body;
@@ -36,6 +34,12 @@ module.exports = {
             .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
             .json({ success: false, err: err.message, stack: err.stack });
         });
+    });
+  },
+  logout(req, res) {
+    req.logout();
+    return res.status(200).json({
+      success: true
     });
   }
 };

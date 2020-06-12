@@ -6,6 +6,7 @@ const controller = require("./controller");
 const validator = require("./validator");
 
 router.post("/login", passport.authenticate("local"), controller.login);
+router.get("/logout", controller.logout);
 router.post(
   "/signup",
   validator.signUpCheck,
