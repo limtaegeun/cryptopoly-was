@@ -6,13 +6,10 @@ const { Asset, CurrencyPair, Chart1D, Chart30min } = require("../../models");
 const moment = require("moment");
 const rp = require("request-promise");
 const methods = require("./methods");
+const Sequelize = require("sequelize");
+const Op = Sequelize.Op;
 
 module.exports = {
-  /**
-   * get Currency with id
-   * @param req
-   * @param res
-   */
   getChartData(req, res) {
     let { id, period } = req.params;
 
@@ -30,13 +27,14 @@ module.exports = {
   },
   retrieveChartData(req, res) {
     let { start, end, period } = req.query;
-    start = moment(start, "YYYY-MM-DD");
-    end = moment(end, "YYYY-MM-DD");
-    console.log(req.query);
+    start = moment.utc(start, "YYYY-MM-DD");
+    end = moment.utc(end, "YYYY-MM-DD");
+    console.log(req.query, req.user);
     let option = {
-      order: [["date", "AES"]],
-      date: {
-        $between: [start.toISOString(true), end.toISOString(true)]
+      where: {
+        date: {
+          [Op.between]: [start.toISOString(), end.toISOString()]
+        }
       }
     };
 
@@ -57,11 +55,7 @@ module.exports = {
           .json({ success: false, err: err.message, stack: err.stack });
       });
   },
-  /**
-   * edit lookbook
-   * @param req
-   * @param res
-   */
+
   editChartData(req, res) {
     let body = req.body;
     // console.log(body);
@@ -88,11 +82,7 @@ module.exports = {
         }
       });
   },
-  /**
-   * delete chart data
-   * @param req
-   * @param res
-   */
+
   deleteChartData(req, res) {
     let body = req.body;
     // console.log(body);
@@ -110,11 +100,7 @@ module.exports = {
         }
       });
   },
-  /**
-   * get data from api
-   * @param req
-   * @param res
-   */
+
   batchGetChartDataFromApi(req, res) {
     let { start, end, base, quote, exchange, period } = req.query;
     start = moment.utc(start, "YYYY-MM-DD");
@@ -155,9 +141,9 @@ module.exports = {
 
 function selectChartModel(period) {
   switch (period) {
-    case "1D":
+    case "86400":
       return Chart1D;
-    case "30m":
+    case "1800":
       return Chart30min;
     default:
       throw "undefine period Error";

@@ -32,8 +32,8 @@ module.exports = {
         // console.log(result);
         if (real.upsert) {
           methods.upsertPredictByDate(real.upsert, 86400, 1).then(predicted => {
-            console.log(real.data);
-            console.log(predicted);
+            console.log("real : ", real);
+            console.log("predicted:  ", predicted);
             res.status(HTTP_STATUS_CODES.OK).json({
               data: real.data.concat(predicted)
             });
@@ -85,7 +85,3 @@ module.exports = {
       });
   }
 };
-
-function isSamePeriod(now) {
-  // now에서 1period전까지
-}

@@ -3,8 +3,9 @@ module.exports = (sequelize, DataTypes) => {
   const PwdAuth = sequelize.define(
     "PwdAuth",
     {
-      token: DataTypes.STRING,
-      ttl: DataTypes.INTEGER
+      token: DataTypes.STRING(60),
+      ttl: DataTypes.INTEGER,
+      userId: DataTypes.INTEGER
     },
     {}
   );

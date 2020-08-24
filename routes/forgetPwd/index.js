@@ -6,11 +6,11 @@ const controller = require("./controller");
 const validator = require("./validator");
 
 router.post(
-  "/issueAuth",
+  "/auth",
   validator.check,
   validator.result,
   controller.issueAuthenticationKey
 );
-router.get("/email", controller.sendEmail);
+router.post("/reset", controller.resetPassword);
 
 module.exports = router;

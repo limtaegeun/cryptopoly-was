@@ -18,7 +18,8 @@ const pwdConfig = require("./../../config/crypto.json");
 
 module.exports = {
   genPwdAuthKey,
-  sendEmail
+  sendEmail,
+  changeHashedPassword
 };
 
 async function genPwdAuthKey(userId) {
@@ -52,4 +53,24 @@ function sendEmail(from, to, subject, content) {
   };
 
   return rp(options);
+}
+
+function changeHashedPassword(password, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(
+      password,
+      salt,
+      pwdConfig.pwd.iterations,
+      pwdConfig.pwd.keylen,
+      pwdConfig.pwd.digest,
+      (err, key) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        const hashedPwd = key.toString("base64");
+        resolve(hashedPwd, salt);
+      }
+    );
+  });
 }

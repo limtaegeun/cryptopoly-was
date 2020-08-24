@@ -58,7 +58,7 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
       if (data.length < 1) {
         let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
         resolve({
-          data: null,
+          data: [],
           upsert: { start: timeOfPeriod.start, end: end.unix() }
         });
         return;

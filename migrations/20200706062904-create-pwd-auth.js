@@ -9,7 +9,7 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       token: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(60)
       },
       ttl: {
         type: Sequelize.INTEGER
