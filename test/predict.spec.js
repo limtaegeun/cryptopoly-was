@@ -4,7 +4,7 @@ var should = require("chai").should();
 import app from "../app";
 const moment = require("moment");
 const sampleData = require("./sampleDataSet/sampleData");
-const { ProductPage } = require("../models");
+const { PredictChart } = require("../models");
 const Sequelize = require("sequelize");
 const Op = Sequelize.Op;
 
@@ -109,21 +109,73 @@ describe("predict test", function() {
       result.start.should.equal(moment.utc("2020-04-04").unix());
       result.end.should.equal(moment.utc("2020-04-08").unix());
     });
-    it("should return expected predict data: requestWithDate", function() {
-      this.timeout(10000);
-      return methods
-        .upsertPredictByDate(
-          {
-            start: moment.utc("2020-04-04").unix(),
-            end: moment.utc("2020-04-08").unix()
-          },
-          86400,
-          1,
-          "2020-04-01T02"
-        )
+
+    it("should return expected date array : getUnConfirmDate", function() {
+      let confirmed = [
+        { date: "2020-08-02" },
+        { date: "2020-08-03" },
+        { date: "2020-08-06" },
+        { date: "2020-08-09" }
+      ];
+      let unconfirmedDates = methods.getUnconfirmedDates(
+        moment.utc("2020-08-01").unix(),
+        moment.utc("2020-08-10").unix(),
+        86400,
+        confirmed
+      );
+      console.log(unconfirmedDates.map(el => moment.unix(el).toISOString()));
+      unconfirmedDates.should.have.lengthOf(6);
+    });
+
+    it("should return expect 5 source Data : getSourceData", function() {
+      let target = moment.utc("2020-08-07").unix();
+      let source = [
+        { date: "2020-08-01" },
+        { date: "2020-08-02" },
+        { date: "2020-08-03" },
+        { date: "2020-08-04" },
+        { date: "2020-08-05" },
+        { date: "2020-08-05" },
+        { date: "2020-08-06" },
+        { date: "2020-08-07" },
+        { date: "2020-08-08" }
+      ];
+      let result = methods.getSourceData(target, source, 5, 86400);
+      result.should.have.lengthOf(5);
+      result.should.be.eql([
+        { date: "2020-08-03" },
+        { date: "2020-08-04" },
+        { date: "2020-08-05" },
+        { date: "2020-08-05" },
+        { date: "2020-08-06" }
+      ]);
+    });
+
+    it("should return expect predicted Data : getConfirmPastPredictData", function() {
+      let start = moment.utc("2020-11-10");
+      let deleteStart = moment.utc("2020-11-15");
+      let end = moment.utc("2020-11-18");
+      let period = 86400;
+      let pairId = 1;
+      return PredictChart.findAll({
+        where: {
+          date: {
+            [Op.between]: [deleteStart.toISOString(), end.toISOString()]
+          }
+        }
+      })
         .then(result => {
-          console.log(result);
-          result.should.have.lengthOf(5);
+          let mapDestroy = result.map(item => {
+            return item.destroy();
+          });
+          return Promise.all(mapDestroy);
+        })
+        .then(() => {
+          return methods.getConfirmPastPredictData(start, end, period, pairId);
+        })
+        .then(results => {
+          console.log(results);
+          results.should.be.lengthOf(9);
         });
     });
   });

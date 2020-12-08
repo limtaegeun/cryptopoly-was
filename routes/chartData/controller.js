@@ -13,7 +13,8 @@ module.exports = {
   getChartData(req, res) {
     let { id, period } = req.params;
 
-    selectChartModel(period)
+    methods
+      .selectChartModel(period)
       .findOne({
         where: {
           id: id
@@ -38,7 +39,8 @@ module.exports = {
       }
     };
 
-    selectChartModel(period)
+    methods
+      .selectChartModel(period)
       .findAll(option)
       .then(chartDatas => {
         res.status(HTTP_STATUS_CODES.OK).json({
@@ -59,7 +61,8 @@ module.exports = {
   editChartData(req, res) {
     let body = req.body;
     // console.log(body);
-    selectChartModel(body.period)
+    methods
+      .selectChartModel(body.period)
       .findOne({ where: { id: body.id } })
       .then(function(obj) {
         if (obj) {
@@ -86,7 +89,8 @@ module.exports = {
   deleteChartData(req, res) {
     let body = req.body;
     // console.log(body);
-    selectChartModel(body.period)
+    methods
+      .selectChartModel(body.period)
       .findOne({ where: { id: body.id } })
       .then(obj => {
         if (obj) {
@@ -138,14 +142,3 @@ module.exports = {
       });
   }
 };
-
-function selectChartModel(period) {
-  switch (period) {
-    case "86400":
-      return Chart1D;
-    case "1800":
-      return Chart30min;
-    default:
-      throw "undefine period Error";
-  }
-}

@@ -12,6 +12,8 @@ const url = require("../../constant/url.json");
 const Sequelize = require("sequelize");
 const Op = Sequelize.Op;
 const async = require("async");
+const chartMethods = require("../chartData/methods");
+const seqh = require("../../plugin/sequelizeHelper");
 
 module.exports = {
   requestPredict,
@@ -21,8 +23,173 @@ module.exports = {
   parseToLTCM,
   upsertPredictByDate,
   getLengthOfPeriod,
-  getTimeOfPeriod
+  getTimeOfPeriod,
+  getUnconfirmedDates,
+  getConfirmPastPredictData,
+  getSourceData
 };
+
+/**
+ * get Confirm Past Predict Data
+ * if there are not confirmed, it predict data using real data
+ * @param start {moment}
+ * @param end {moment}
+ * @param period {int}
+ * @param pairId {int} - CurrencyPairId
+ * @param now {string | undefined} - 'YYYY-MM-DD'
+ */
+function getConfirmPastPredictData(start, end, period, pairId, now) {
+  return new Promise(resolve => {
+    PredictChart.findAll({
+      where: {
+        date: {
+          [Op.between]: [start.toISOString(), end.toISOString()]
+        },
+        confirm: 1
+      }
+    }).then(confirmed => {
+      let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
+      let lengthOfExpectConfirmedData =
+        timeOfPeriod.end - timeOfPeriod.start / period + 1;
+      if (confirmed.length === lengthOfExpectConfirmedData) {
+        return confirmed;
+      } else {
+        let unconfirmedDates = getUnconfirmedDates(
+          timeOfPeriod.start,
+          timeOfPeriod.end,
+          period,
+          confirmed
+        ).sort((a, b) => a - b);
+        let sourceSearchStart = moment.unix(unconfirmedDates[0] - period * 5);
+        let sourceSearchEnd = moment.unix(
+          unconfirmedDates[unconfirmedDates.length - 1] - period * 1
+        );
+        console.log("unconfirmDates :", unconfirmedDates);
+        chartMethods
+          .selectChartModel(period)
+          .findAll({
+            where: {
+              date: {
+                [Op.between]: [
+                  sourceSearchStart.toISOString(),
+                  sourceSearchEnd.toISOString()
+                ]
+              }
+            }
+          })
+          .then(source => {
+            seqh.logOfInstance(source, "source Data");
+            // todo : 1. 전체 예측하기
+            // todo : 3. 기존 데이터와 합쳐서 내보내기
+            let asyncPredictList = unconfirmedDates.map(dateOfUnix => {
+              return new Promise((resolve, reject) => {
+                let sourceToPredict = getSourceData(
+                  dateOfUnix,
+                  source,
+                  5,
+                  period
+                );
+                let ltcmSource = parseToLTCM(sourceToPredict);
+                requestPredict(ltcmSource, period).then(predicted => {
+                  console.log("source: ", ltcmSource, "result :", predicted);
+                  resolve(JSON.parse(predicted));
+                });
+              });
+            });
+            Promise.all(asyncPredictList)
+              .then(newPredictList => {
+                let upsertData = newPredictList.map((value, i) => {
+                  return {
+                    date: moment.unix(unconfirmedDates[i]).toISOString(),
+                    period: period,
+                    close: value[0][0],
+                    CurrencyPairId: pairId,
+                    confirm: true
+                  };
+                });
+                // console.log("upsertData :", upsertData);
+                let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
+                resolve(dataOfConfirmedAndNewPredict);
+                return PredictChart.bulkCreate(upsertData, {
+                  fields: [
+                    "date",
+                    "period",
+                    "high",
+                    "low",
+                    "open",
+                    "close",
+                    "volume",
+                    "tradesCount",
+                    "CurrencyPairId",
+                    "confirm",
+                    "updatedAt"
+                  ],
+                  updateOnDuplicate: [
+                    "high",
+                    "low",
+                    "open",
+                    "close",
+                    "volume",
+                    "tradesCount",
+                    "confirm",
+                    "updatedAt"
+                  ]
+                });
+              })
+              .then(() => {
+                //
+              })
+              .catch(err => {
+                // todo: report Error
+                console.log("Error Occur in upsert Predicted Data");
+              });
+            // todo : 2. upsert
+          });
+      }
+    });
+  });
+}
+
+/**
+ * get UnConfirmed dates between start and end
+ * @param start {int} - utc sec timestamp
+ * @param end {int} - utc sec timestamp
+ * @param period {int} - time period sec
+ * @param confirmed {[object]} - confirmed data from PredictChart
+ * @return {[int]} -  unconfirmed date that is utc unix
+ */
+function getUnconfirmedDates(start, end, period, confirmed) {
+  let timeOfPeriod = getTimeOfPeriod(start, end, period);
+  let confirmedDate = confirmed.map(item => moment.utc(item.date).unix());
+  let unconfirmedDates = [];
+  for (
+    let timestamp = timeOfPeriod.start;
+    timestamp <= timeOfPeriod.end;
+    timestamp += period
+  ) {
+    console.log(timestamp);
+    if (!confirmedDate.includes(timestamp)) {
+      unconfirmedDates.push(timestamp);
+    }
+  }
+  return unconfirmedDates;
+}
+
+/**
+ *
+ * @param targetDate {int} - utc sec timestamp
+ * @param source {[object]} - source data from Chart Table
+ * @param length {int} - length of source
+ * @param period {int} - time period sec
+ */
+function getSourceData(targetDate, source, length, period) {
+  return source.filter(el => {
+    let sourceStart = targetDate - length * period;
+    let sourceEnd = targetDate - 1 * period;
+    let unixOfEl = moment.utc(el.date).unix();
+    return unixOfEl >= sourceStart && unixOfEl <= sourceEnd;
+  });
+}
 
 /**
  * predict find and return what is need to update
@@ -64,12 +231,15 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
         return;
       }
       let last = data[data.length - 1];
-      console.log(last);
-      console.log(moment(last.date).unix(), end.unix());
+      // console.log(last);
+      // console.log(moment(last.date).unix(), end.unix());
       if (end.unix() - moment(last.date).unix() >= period) {
         resolve({
           data: data,
-          upsert: { start: moment(last.date).unix() + period, end: end.unix() }
+          upsert: {
+            start: Number(moment(last.date).unix()) + Number(period),
+            end: end.unix()
+          }
         });
       } else {
         resolve({ data: data, upsert: null });
@@ -103,8 +273,10 @@ function getSamePeriod(target, period) {
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
 function getChartData(start, end, period, now = undefined) {
+  console.log("getChartData");
   return new Promise((resolve, reject) => {
     let samePeriod = getSamePeriod(moment(now), period);
+    // console.log("samePeriod", samePeriod);
     if (period === 86400) {
       if (start <= samePeriod.start.unix()) {
         // 시작 시간 과거
@@ -122,33 +294,36 @@ function getChartData(start, end, period, now = undefined) {
           }).then(chart1ds => {
             resolve(chart1ds);
           });
-        }
-        // 끝시간 미래
-        Chart1D.findAll({
-          where: {
-            date: {
-              [Op.between]: [
-                moment.unix(start).toISOString(),
-                moment.unix(end).toISOString()
-              ]
-            }
-          }
-        }).then(chart1ds => {
-          PredictChart.findAll({
+        } else {
+          // 끝시간 미래
+          console.log("end is future");
+          Chart1D.findAll({
             where: {
               date: {
                 [Op.between]: [
-                  samePeriod.end.toISOString(),
-                  moment.unix(end).toISOString()
+                  moment.unix(start).toISOString(),
+                  samePeriod.start.toISOString()
                 ]
-              },
-              period: period
+              }
             }
-          }).then(predicted => {
-            let concated = chart1ds.concat(predicted);
-            resolve(concated);
+          }).then(chart1ds => {
+            console.log(chart1ds);
+            PredictChart.findAll({
+              where: {
+                date: {
+                  [Op.between]: [
+                    samePeriod.end.toISOString(),
+                    moment.unix(end).toISOString()
+                  ]
+                },
+                period: period
+              }
+            }).then(predicted => {
+              let concated = chart1ds.concat(predicted);
+              resolve(concated);
+            });
           });
-        });
+        }
       } else {
         // 시작시간 미래
         PredictChart.findAll({
@@ -162,8 +337,7 @@ function getChartData(start, end, period, now = undefined) {
             period: period
           }
         }).then(predicted => {
-          let concated = chart1ds.concat(predicted);
-          resolve(concated);
+          resolve(predicted);
         });
       }
     } else if (period === 1800) {
@@ -183,33 +357,34 @@ function getChartData(start, end, period, now = undefined) {
           }).then(chart1ds => {
             resolve(chart1ds);
           });
-        }
-        // 끝시간 미래
-        Chart30min.findAll({
-          where: {
-            date: {
-              [Op.between]: [
-                moment.unix(start).toISOString(),
-                moment.unix(end).toISOString()
-              ]
-            }
-          }
-        }).then(chart1ds => {
-          PredictChart.findAll({
+        } else {
+          // 끝시간 미래
+          Chart30min.findAll({
             where: {
               date: {
                 [Op.between]: [
-                  samePeriod.end.toISOString(),
+                  moment.unix(start).toISOString(),
                   moment.unix(end).toISOString()
                 ]
-              },
-              period: period
+              }
             }
-          }).then(predicted => {
-            let concated = chart1ds.concat(predicted);
-            resolve(concated);
+          }).then(chart1ds => {
+            PredictChart.findAll({
+              where: {
+                date: {
+                  [Op.between]: [
+                    samePeriod.end.toISOString(),
+                    moment.unix(end).toISOString()
+                  ]
+                },
+                period: period
+              }
+            }).then(predicted => {
+              let concated = chart1ds.concat(predicted);
+              resolve(concated);
+            });
           });
-        });
+        }
       } else {
         // 시작시간 미래
         PredictChart.findAll({
@@ -223,8 +398,7 @@ function getChartData(start, end, period, now = undefined) {
             period: period
           }
         }).then(predicted => {
-          let concated = chart1ds.concat(predicted);
-          resolve(concated);
+          resolve(predicted);
         });
       }
     }
@@ -239,6 +413,7 @@ function getChartData(start, end, period, now = undefined) {
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
 function upsertPredictByDate(date, period, pairId, now = undefined) {
+  console.log("upsertPredictByDate");
   return new Promise((resolve, reject) => {
     let start = moment.unix(date.start);
     // let end = moment.unix(date.end);
@@ -288,7 +463,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
           let periodStart = getTimeOfPeriod(date.start, date.end, period).start;
           let createData = result.acc.map((item, idx) => {
             return {
-              date: moment.unix(periodStart + period * idx),
+              date: moment.unix(periodStart + period * idx).toISOString(),
               period: period,
               close: item,
               CurrencyPairId: pairId
@@ -304,7 +479,8 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
               "close",
               "volume",
               "tradesCount",
-              "CurrencyPairId"
+              "CurrencyPairId",
+              "updatedAt"
             ],
             updateOnDuplicate: [
               "high",
@@ -312,7 +488,8 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
               "open",
               "close",
               "volume",
-              "tradesCount"
+              "tradesCount",
+              "updatedAt"
             ]
           })
             .then(() => {
@@ -342,7 +519,7 @@ function parseToLTCM(dbData) {
 
 /**
  * request to ML Server With LTCM parsed data
- * @param data {string} - LTCM parsed data that stringify double array : [[double]]
+ * @param data {JSON} - LTCM parsed data that stringify double array : [[double]]
  * @param period {int}
  * @return {*}
  */

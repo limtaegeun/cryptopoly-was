@@ -6,8 +6,21 @@ const rp = require("request-promise");
 module.exports = {
   chartFromPoloniex,
   chart1DUpsert,
-  chart30minUpsert
+  chart30minUpsert,
+  selectChartModel
 };
+
+function selectChartModel(period) {
+  period = String(period);
+  switch (period) {
+    case "86400":
+      return Chart1D;
+    case "1800":
+      return Chart30min;
+    default:
+      throw "undefine period Error in selectChartModel ";
+  }
+}
 
 function chartFromPoloniex(start, end, period, pair) {
   return new Promise((resolve, reject) => {

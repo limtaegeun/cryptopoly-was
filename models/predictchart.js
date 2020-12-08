@@ -18,7 +18,8 @@ module.exports = (sequelize, DataTypes) => {
       open: DataTypes.DOUBLE,
       close: DataTypes.DOUBLE,
       volume: DataTypes.INTEGER,
-      tradesCount: DataTypes.INTEGER
+      tradesCount: DataTypes.INTEGER,
+      confirm: DataTypes.BOOLEAN
     },
     {}
   );

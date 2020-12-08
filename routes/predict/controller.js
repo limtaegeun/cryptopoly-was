@@ -8,6 +8,7 @@ const rp = require("request-promise");
 const apiKey = require("../../config/coinapi.json").key;
 const url = require("../../constant/url.json");
 const _ = require("lodash");
+const seqh = require("../../plugin/sequelizeHelper");
 import methods from "./methods";
 module.exports = {
   getPredict(req, res) {
@@ -25,23 +26,26 @@ module.exports = {
   },
   retrievePredict(req, res) {
     let { start, end, period } = req.query;
-
+    // todo : 1 과거 예측은 confirm 데이터 받아오기
+    // todo : 2 미래 예측은 기존 알고리즘 사용
     methods
       .getPredictedAndToPredict(moment.utc(start), moment.utc(end), period)
-      .then(real => {
-        // console.log(result);
-        if (real.upsert) {
-          methods.upsertPredictByDate(real.upsert, 86400, 1).then(predicted => {
-            console.log("real : ", real);
-            console.log("predicted:  ", predicted);
-            res.status(HTTP_STATUS_CODES.OK).json({
-              data: real.data.concat(predicted)
+      .then(predicted => {
+        console.log(predicted);
+        if (predicted.upsert) {
+          methods
+            .upsertPredictByDate(predicted.upsert, 86400, 1)
+            .then(newPredict => {
+              seqh.logOfInstance(predicted.data, "Predicted");
+              seqh.logOfInstance(newPredict, "newPredict");
+              res.status(HTTP_STATUS_CODES.OK).json({
+                data: predicted.data.concat(newPredict)
+              });
             });
-          });
         } else {
-          console.log(real.data);
+          seqh.logOfInstance(predicted.data);
           res.status(HTTP_STATUS_CODES.OK).json({
-            data: real.data
+            data: predicted.data
           });
         }
       });
