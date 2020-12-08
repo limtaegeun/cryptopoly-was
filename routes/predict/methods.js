@@ -25,7 +25,7 @@ module.exports = {
   getLengthOfPeriod,
   getTimeOfPeriod,
   getUnconfirmedDates,
-  getConfirmPastPredictData,
+  getPastPredictData,
   getSourceData
 };
 
@@ -38,114 +38,85 @@ module.exports = {
  * @param pairId {int} - CurrencyPairId
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
-function getConfirmPastPredictData(start, end, period, pairId, now) {
+function getPastPredictData(start, end, period, pairId, now) {
   return new Promise(resolve => {
-    PredictChart.findAll({
-      where: {
-        date: {
-          [Op.between]: [start.toISOString(), end.toISOString()]
-        },
-        confirm: 1
-      }
-    }).then(confirmed => {
+    getConfirmedPredictData(start, end).then(confirmed => {
       let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
       let lengthOfExpectConfirmedData =
         timeOfPeriod.end - timeOfPeriod.start / period + 1;
       if (confirmed.length === lengthOfExpectConfirmedData) {
         return confirmed;
       } else {
-        let unconfirmedDates = getUnconfirmedDates(
-          timeOfPeriod.start,
-          timeOfPeriod.end,
+        newPredictByUnconfirmedDate(
+          timeOfPeriod,
+          confirmed,
           period,
-          confirmed
-        ).sort((a, b) => a - b);
-        let sourceSearchStart = moment.unix(unconfirmedDates[0] - period * 5);
-        let sourceSearchEnd = moment.unix(
-          unconfirmedDates[unconfirmedDates.length - 1] - period * 1
-        );
-        console.log("unconfirmDates :", unconfirmedDates);
-        chartMethods
-          .selectChartModel(period)
-          .findAll({
-            where: {
-              date: {
-                [Op.between]: [
-                  sourceSearchStart.toISOString(),
-                  sourceSearchEnd.toISOString()
-                ]
-              }
-            }
-          })
-          .then(source => {
-            seqh.logOfInstance(source, "source Data");
-            // todo : 1. 전체 예측하기
-            // todo : 3. 기존 데이터와 합쳐서 내보내기
-            let asyncPredictList = unconfirmedDates.map(dateOfUnix => {
-              return new Promise((resolve, reject) => {
-                let sourceToPredict = getSourceData(
-                  dateOfUnix,
-                  source,
-                  5,
-                  period
-                );
-                let ltcmSource = parseToLTCM(sourceToPredict);
-                requestPredict(ltcmSource, period).then(predicted => {
-                  console.log("source: ", ltcmSource, "result :", predicted);
-                  resolve(JSON.parse(predicted));
-                });
-              });
-            });
-            Promise.all(asyncPredictList)
-              .then(newPredictList => {
-                let upsertData = newPredictList.map((value, i) => {
-                  return {
-                    date: moment.unix(unconfirmedDates[i]).toISOString(),
-                    period: period,
-                    close: value[0][0],
-                    CurrencyPairId: pairId,
-                    confirm: true
-                  };
-                });
-                // console.log("upsertData :", upsertData);
-                let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
-                resolve(dataOfConfirmedAndNewPredict);
-                return PredictChart.bulkCreate(upsertData, {
-                  fields: [
-                    "date",
-                    "period",
-                    "high",
-                    "low",
-                    "open",
-                    "close",
-                    "volume",
-                    "tradesCount",
-                    "CurrencyPairId",
-                    "confirm",
-                    "updatedAt"
-                  ],
-                  updateOnDuplicate: [
-                    "high",
-                    "low",
-                    "open",
-                    "close",
-                    "volume",
-                    "tradesCount",
-                    "confirm",
-                    "updatedAt"
-                  ]
-                });
-              })
-              .then(() => {
-                //
-              })
-              .catch(err => {
-                // todo: report Error
-                console.log("Error Occur in upsert Predicted Data");
-              });
-            // todo : 2. upsert
-          });
+          pairId
+        ).then(result => {
+          resolve(result);
+        });
       }
+    });
+  });
+}
+
+/**
+ * getConfirmedPredictData
+ * @param start {moment}
+ * @param end {moment}
+ * @return {Promise<Model[]>}
+ */
+function getConfirmedPredictData(start, end) {
+  return PredictChart.findAll({
+    where: {
+      date: {
+        [Op.between]: [start.toISOString(), end.toISOString()]
+      },
+      confirm: 1
+    }
+  });
+}
+
+/**
+ * newPredictByUnconfirmedDate
+ * @param timeOfPeriod {Object} - start , end 를 period단위로 변환한 객체
+ * @param confirmed {[Object]} - confirmed Data : 실데이터로 예측한 값들
+ * @param period {int} - period Of predict
+ * @param pairId {int} - CurrencyPairId
+ * @return {Promise<Object>}
+ */
+function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
+  return new Promise(resolve => {
+    let unconfirmedDates = getUnconfirmedDates(
+      timeOfPeriod.start,
+      timeOfPeriod.end,
+      period,
+      confirmed
+    ).sort((a, b) => a - b);
+    // console.log("unconfirmDates :", unconfirmedDates);
+    getSourceToPredictUnconfirmed(unconfirmedDates, period).then(source => {
+      // seqh.logOfInstance(source, "source Data");
+      requestAllUnconfirmedDates(source, unconfirmedDates, period)
+        .then(newPredictList => {
+          let upsertData = newPredictList.map((value, i) => {
+            return {
+              date: moment.unix(unconfirmedDates[i]).toISOString(),
+              period: period,
+              close: value[0][0],
+              CurrencyPairId: pairId,
+              confirm: true
+            };
+          });
+          // console.log("upsertData :", upsertData);
+          let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
+          resolve(dataOfConfirmedAndNewPredict);
+
+          return upsertNewPredictData(upsertData);
+        })
+        .catch(err => {
+          // todo: report Error
+          console.log("Error Occur in upsert Predicted Data");
+        });
     });
   });
 }
@@ -173,6 +144,87 @@ function getUnconfirmedDates(start, end, period, confirmed) {
     }
   }
   return unconfirmedDates;
+}
+
+/**
+ * getSourceToPredictUnconfirmed
+ * @param unconfirmedDates {[Object]} - unconfirmedDates
+ * @param period {int} - period
+ * @return {Promise<Object>}
+ */
+function getSourceToPredictUnconfirmed(unconfirmedDates, period) {
+  let sourceSearchStart = moment.unix(unconfirmedDates[0] - period * 5);
+  let sourceSearchEnd = moment.unix(
+    unconfirmedDates[unconfirmedDates.length - 1] - period * 1
+  );
+  return chartMethods.selectChartModel(period).findAll({
+    where: {
+      date: {
+        [Op.between]: [
+          sourceSearchStart.toISOString(),
+          sourceSearchEnd.toISOString()
+        ]
+      }
+    }
+  });
+}
+
+/**
+ * unconfirmed 로 새로 예측된 데이터를 upsert한다.
+ * @param upsertData
+ * @return {Promise<PredictChart[]>}
+ */
+function upsertNewPredictData(upsertData) {
+  return PredictChart.bulkCreate(upsertData, {
+    fields: [
+      "date",
+      "period",
+      "high",
+      "low",
+      "open",
+      "close",
+      "volume",
+      "tradesCount",
+      "CurrencyPairId",
+      "confirm",
+      "updatedAt"
+    ],
+    updateOnDuplicate: [
+      "high",
+      "low",
+      "open",
+      "close",
+      "volume",
+      "tradesCount",
+      "confirm",
+      "updatedAt"
+    ]
+  });
+}
+
+/**
+ * requestAllUnconfirmDates
+ * @param source
+ * @param unconfirmedDates
+ * @param period
+ * @return {Promise<Object>}
+ */
+function requestAllUnconfirmedDates(source, unconfirmedDates, period) {
+  return new Promise(resolve => {
+    let asyncPredictList = unconfirmedDates.map(dateOfUnix => {
+      return new Promise((resolve, reject) => {
+        let sourceToPredict = getSourceData(dateOfUnix, source, 5, period);
+        let ltcmSource = parseToLTCM(sourceToPredict);
+        requestPredict(ltcmSource, period).then(predicted => {
+          // console.log("source: ", ltcmSource, "result :", predicted);
+          resolve(JSON.parse(predicted));
+        });
+      });
+    });
+    Promise.all(asyncPredictList).then(result => {
+      resolve(result);
+    });
+  });
 }
 
 /**
@@ -519,9 +571,9 @@ function parseToLTCM(dbData) {
 
 /**
  * request to ML Server With LTCM parsed data
- * @param data {JSON} - LTCM parsed data that stringify double array : [[double]]
+ * @param data {string} - LTCM parsed data that stringify double array : [[double]]
  * @param period {int}
- * @return {*}
+ * @return {Promise<string>}
  */
 function requestPredict(data, period) {
   let form = { data: data };

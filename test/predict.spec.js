@@ -171,7 +171,7 @@ describe("predict test", function() {
           return Promise.all(mapDestroy);
         })
         .then(() => {
-          return methods.getConfirmPastPredictData(start, end, period, pairId);
+          return methods.getPastPredictData(start, end, period, pairId);
         })
         .then(results => {
           console.log(results);
