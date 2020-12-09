@@ -32,13 +32,13 @@ module.exports = {
 /**
  * get Confirm Past Predict Data
  * if there are not confirmed, it predict data using real data
- * @param start {moment}
+ * @param start {moment.Moment}
  * @param end {moment}
  * @param period {int}
  * @param pairId {int} - CurrencyPairId
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
-function getPastPredictData(start, end, period, pairId, now) {
+function getPastPredictData(start, end, period, pairId) {
   return new Promise(resolve => {
     getConfirmedPredictData(start, end).then(confirmed => {
       let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
@@ -244,19 +244,21 @@ function getSourceData(targetDate, source, length, period) {
 }
 
 /**
- * predict find and return what is need to update
- * @param start {moment}
- * @param end {moment}
+ * find and return data and date what is need to update to predict by predicted data
+ * 예측값에 의한 예측은 이전 예측값이 변동되므로 현재 시각부터 end에 해당하는 시각까지 모든 예측값이 빠짐없이 최신으로
+ * 업데이트 되어야함
+ * @param start {moment.Moment}
+ * @param end {moment.Moment}
  * @param period {int}
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
 function getPredictedAndToPredict(start, end, period, now = undefined) {
   return new Promise((resolve, reject) => {
-    let periodRange = getSamePeriod(moment(now), period);
+    let periodRange = getSamePeriod(moment.utc(now), period);
     PredictChart.findAll({
       where: {
         date: {
-          [Op.between]: [start.toISOString(), end.toISOString()]
+          [Op.between]: [periodRange.start.toISOString(), end.toISOString()]
         },
         period: period,
         updatedAt: {
@@ -267,13 +269,13 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
       data.sort((a, b) => {
         if (a.date < b.date) {
           return -1;
-        }
-        if (a.date > b.date) {
+        } else if (a.date > b.date) {
           return 1;
+        } else {
+          return 0;
         }
-        // 이름이 같을 경우
-        return 0;
       });
+      console.log(data);
       if (data.length < 1) {
         let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
         resolve({
@@ -302,7 +304,7 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
 
 /**
  * return same period
- * @param target {moment}
+ * @param target {moment.Moment}
  * @param period {int}
  * @return {object} - {start : moment, end: moment}
  */
@@ -476,7 +478,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
 
     getChartData(searchStart.unix(), searchEnd.unix(), period, now).then(
       source => {
-        // console.log(source);
+        seqh.logOfInstance(source, "source");
         let parsedSource = parseToLTCM(source);
         let initCloser = callback => {
           requestPredict(parsedSource, period).then(predicted => {
@@ -517,10 +519,12 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
             return {
               date: moment.unix(periodStart + period * idx).toISOString(),
               period: period,
-              close: item,
+              close: item[0],
               CurrencyPairId: pairId
             };
           });
+          seqh.logOfInstance(createData, "result");
+          resolve(createData);
           PredictChart.bulkCreate(createData, {
             fields: [
               "date",
@@ -543,13 +547,9 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
               "tradesCount",
               "updatedAt"
             ]
-          })
-            .then(() => {
-              resolve(createData);
-            })
-            .catch(err => {
-              reject(err);
-            });
+          }).catch(err => {
+            reject(err);
+          });
         });
       }
     );
@@ -601,16 +601,18 @@ function getLengthOfPeriod(start, end, period) {
   let periodEnd = end - (start % period);
   return Math.abs((periodEnd - periodStart) / period);
 }
+
 /**
+ *
  * start 와 end 내부 period 양 끝 time 반환
  * @param start {int} - utc sec timestamp
  * @param end {int} - utc sec timestamp
  * @param period {int} - period by second
- * @return {object} - {start : int, end : int} utc sec timestamp data
+ * @return {{start: number, end: number}}
  */
 function getTimeOfPeriod(start, end, period) {
   let periodStart = start + ((period - (start % period)) % period);
-  let periodEnd = end - (start % period);
+  let periodEnd = end - (end % period);
   return { start: periodStart, end: periodEnd };
 }
 

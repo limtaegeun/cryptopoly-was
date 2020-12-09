@@ -25,11 +25,34 @@ module.exports = {
     });
   },
   retrievePredict(req, res) {
-    let { start, end, period } = req.query;
+    let { start, end, period, pairId } = req.query;
     // todo : 1 과거 예측은 confirm 데이터 받아오기
-    // todo : 2 미래 예측은 기존 알고리즘 사용
+    let pastDates = methods.getTimeOfPeriod(
+      moment.utc(start).unix(),
+      moment().unix(),
+      period
+    );
     methods
-      .getPredictedAndToPredict(moment.utc(start), moment.utc(end), period)
+      .getPastPredictData(
+        moment.unix(pastDates.start),
+        moment.unix(pastDates.end),
+        period,
+        pairId
+      )
+      .then(confirmed => {});
+
+    // todo : 2 미래 예측은 기존 알고리즘 사용
+    let futurePredictDates = methods.getTimeOfPeriod(
+      moment().unix(),
+      moment.utc(end).unix(),
+      period
+    );
+    methods
+      .getPredictedAndToPredict(
+        moment.unix(futurePredictDates.start),
+        moment.unix(futurePredictDates.end),
+        period
+      )
       .then(predicted => {
         console.log(predicted);
         if (predicted.upsert) {

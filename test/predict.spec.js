@@ -32,40 +32,7 @@ describe("predict test", function() {
             .toISOString()
       ).to.be.true;
     });
-    it("should return expected predict data : getPredictedAndToPredict", function() {
-      return methods
-        .getPredictedAndToPredict(
-          moment.utc("2020-04-01"),
-          moment.utc("2020-04-05"),
-          86400,
-          "2020-04-01"
-        )
-        .then(result => {
-          // console.log(result);
-          expect(result.data).to.lengthOf(3);
-          expect(result.upsert).to.eql({
-            start: moment.utc("2020-04-04").unix(),
-            end: moment.utc("2020-04-05").unix()
-          });
-        });
-    });
-    it("when predict data is null : getPredictedAndToPredict", function() {
-      return methods
-        .getPredictedAndToPredict(
-          moment.utc("2020-04-01"),
-          moment.utc("2020-04-03"),
-          86400,
-          "2020-04-05"
-        )
-        .then(result => {
-          // console.log(result);
-          expect(result.data).is.null;
-          expect(result.upsert).to.eql({
-            start: moment.utc("2020-04-01").unix(),
-            end: moment.utc("2020-04-03").unix()
-          });
-        });
-    });
+
     describe("request ML predict methods", function() {
       let resultOfgetChartData;
       it("should return expected chart data :getChartData ", function() {
@@ -102,7 +69,7 @@ describe("predict test", function() {
     it("should return expected time of period : getTimeOfPeriod ", function() {
       let result = methods.getTimeOfPeriod(
         moment.utc("2020-04-04").unix(),
-        moment.utc("2020-04-08").unix(),
+        moment.utc("2020-04-08").unix() + 300,
         86400
       );
       console.log("result:", result);
@@ -176,6 +143,70 @@ describe("predict test", function() {
         .then(results => {
           console.log(results);
           results.should.be.lengthOf(9);
+        });
+    });
+    it("should return expected predict data : getPredictedAndToPredict", function() {
+      return methods
+        .getPredictedAndToPredict(
+          moment.utc("2020-08-23"),
+          moment.utc("2020-08-29"),
+          86400,
+          "2020-08-23"
+        )
+        .then(result => {
+          // console.log(result);
+          expect(result.data).to.lengthOf(1);
+          expect(result.upsert).to.eql({
+            start: moment.utc("2020-08-24").unix(),
+            end: moment.utc("2020-08-29").unix()
+          });
+        });
+    });
+    it("when predict data is null : getPredictedAndToPredict", function() {
+      return methods
+        .getPredictedAndToPredict(
+          moment.utc("2020-08-26"),
+          moment.utc("2020-08-29"),
+          86400,
+          "2020-08-23"
+        )
+        .then(result => {
+          // console.log(result);
+          expect(result.data).is.null;
+          expect(result.upsert).to.eql({
+            start: moment.utc("2020-08-24").unix(),
+            end: moment.utc("2020-08-29").unix()
+          });
+        });
+    });
+    it("should predict from future source Data : upsertPredictByDate", function() {
+      let start = moment.utc("2020-08-24");
+      let end = moment.utc("2020-08-29");
+      let period = 86400;
+      let pairId = 1;
+      return PredictChart.findAll({
+        where: {
+          date: {
+            [Op.between]: [start.toISOString(), end.toISOString()]
+          }
+        }
+      })
+        .then(result => {
+          let mapDestroy = result.map(item => {
+            return item.destroy();
+          });
+          return Promise.all(mapDestroy);
+        })
+        .then(() => {
+          return methods.upsertPredictByDate(
+            { start: start.unix(), end: end.unix() },
+            period,
+            pairId,
+            "2020-08-23"
+          );
+        })
+        .then(result => {
+          result.should.be.lengthOf(6);
         });
     });
   });
