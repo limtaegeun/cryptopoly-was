@@ -26,52 +26,48 @@ module.exports = {
   },
   retrievePredict(req, res) {
     let { start, end, period, pairId } = req.query;
-    // todo : 1 과거 예측은 confirm 데이터 받아오기
+    period = Number(period);
+    let asyncList = [];
     let pastDates = methods.getTimeOfPeriod(
       moment.utc(start).unix(),
       moment().unix(),
       period
     );
-    methods
-      .getPastPredictData(
+
+    if (pastDates) {
+      let pastPredictPromise = methods.getPastPredictData(
         moment.unix(pastDates.start),
         moment.unix(pastDates.end),
         period,
         pairId
-      )
-      .then(confirmed => {});
+      );
+      asyncList.push(pastPredictPromise);
+    }
 
-    // todo : 2 미래 예측은 기존 알고리즘 사용
     let futurePredictDates = methods.getTimeOfPeriod(
       moment().unix(),
       moment.utc(end).unix(),
       period
     );
-    methods
-      .getPredictedAndToPredict(
-        moment.unix(futurePredictDates.start),
-        moment.unix(futurePredictDates.end),
-        period
-      )
-      .then(predicted => {
-        console.log(predicted);
-        if (predicted.upsert) {
-          methods
-            .upsertPredictByDate(predicted.upsert, 86400, 1)
-            .then(newPredict => {
-              seqh.logOfInstance(predicted.data, "Predicted");
-              seqh.logOfInstance(newPredict, "newPredict");
-              res.status(HTTP_STATUS_CODES.OK).json({
-                data: predicted.data.concat(newPredict)
-              });
-            });
-        } else {
-          seqh.logOfInstance(predicted.data);
-          res.status(HTTP_STATUS_CODES.OK).json({
-            data: predicted.data
-          });
-        }
+
+    if (futurePredictDates) {
+      let futurePredictPromise = methods.getPredictByPredicted(
+        futurePredictDates,
+        period,
+        pairId
+      );
+      asyncList.push(futurePredictPromise);
+    }
+    console.log("past:", pastDates, "future: ", futurePredictDates);
+    Promise.all(asyncList).then(value => {
+      let concatedValue = value.reduce((acc, cur) => {
+        acc = acc.concat(cur);
+        return acc;
       });
+      res.status(HTTP_STATUS_CODES.OK).json({
+        data: concatedValue
+      });
+    });
   },
   /**
    * delete chart data

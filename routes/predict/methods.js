@@ -26,7 +26,8 @@ module.exports = {
   getTimeOfPeriod,
   getUnconfirmedDates,
   getPastPredictData,
-  getSourceData
+  getSourceData,
+  getPredictByPredicted
 };
 
 /**
@@ -41,6 +42,7 @@ module.exports = {
 function getPastPredictData(start, end, period, pairId) {
   return new Promise(resolve => {
     getConfirmedPredictData(start, end).then(confirmed => {
+      seqh.logOfInstance(confirmed, "confirmed");
       let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
       let lengthOfExpectConfirmedData =
         timeOfPeriod.end - timeOfPeriod.start / period + 1;
@@ -64,7 +66,7 @@ function getPastPredictData(start, end, period, pairId) {
  * getConfirmedPredictData
  * @param start {moment}
  * @param end {moment}
- * @return {Promise<Model[]>}
+ * @return {Promise<PredictChart[]>}
  */
 function getConfirmedPredictData(start, end) {
   return PredictChart.findAll({
@@ -93,9 +95,9 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
       period,
       confirmed
     ).sort((a, b) => a - b);
-    // console.log("unconfirmDates :", unconfirmedDates);
+    console.log("unconfirmDates :", unconfirmedDates);
     getSourceToPredictUnconfirmed(unconfirmedDates, period).then(source => {
-      // seqh.logOfInstance(source, "source Data");
+      seqh.logOfInstance(source, "source Data");
       requestAllUnconfirmedDates(source, unconfirmedDates, period)
         .then(newPredictList => {
           let upsertData = newPredictList.map((value, i) => {
@@ -107,7 +109,7 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
               confirm: true
             };
           });
-          // console.log("upsertData :", upsertData);
+          console.log("upsertData :", upsertData);
           let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
           resolve(dataOfConfirmedAndNewPredict);
 
@@ -131,14 +133,16 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
  */
 function getUnconfirmedDates(start, end, period, confirmed) {
   let timeOfPeriod = getTimeOfPeriod(start, end, period);
+  console.log("timeOfPeriod : ", timeOfPeriod, period);
   let confirmedDate = confirmed.map(item => moment.utc(item.date).unix());
+  console.log("confirmedDate: ", confirmedDate);
   let unconfirmedDates = [];
   for (
     let timestamp = timeOfPeriod.start;
     timestamp <= timeOfPeriod.end;
     timestamp += period
   ) {
-    console.log(timestamp);
+    console.log("timestamp : ", timestamp);
     if (!confirmedDate.includes(timestamp)) {
       unconfirmedDates.push(timestamp);
     }
@@ -243,6 +247,37 @@ function getSourceData(targetDate, source, length, period) {
   });
 }
 
+function getPredictByPredicted(futurePredictDates, period, pairId) {
+  return new Promise(resolve => {
+    getPredictedAndToPredict(
+      moment.unix(futurePredictDates.start),
+      moment.unix(futurePredictDates.end),
+      period
+    ).then(predicted => {
+      // console.log(predicted);
+      if (predicted.upsert) {
+        upsertPredictByDate(predicted.upsert, 86400, pairId).then(
+          newPredict => {
+            // seqh.logOfInstance(predicted.data, "Predicted");
+            // seqh.logOfInstance(newPredict, "newPredict");
+            let PredictedDataInSearchDate = newPredict.filter(item => {
+              let unixOfItem = moment.utc(item.date).unix();
+              return (
+                unixOfItem >= futurePredictDates.start &&
+                unixOfItem <= futurePredictDates.end
+              );
+            });
+            resolve(predicted.data.concat(PredictedDataInSearchDate));
+          }
+        );
+      } else {
+        seqh.logOfInstance(predicted.data);
+        resolve(predicted.data);
+      }
+    });
+  });
+}
+
 /**
  * find and return data and date what is need to update to predict by predicted data
  * 예측값에 의한 예측은 이전 예측값이 변동되므로 현재 시각부터 end에 해당하는 시각까지 모든 예측값이 빠짐없이 최신으로
@@ -277,26 +312,34 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
       });
       console.log(data);
       if (data.length < 1) {
-        let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
+        let timeOfPeriod = getTimeOfPeriod(
+          periodRange.start.unix(),
+          end.unix(),
+          period
+        );
         resolve({
           data: [],
           upsert: { start: timeOfPeriod.start, end: end.unix() }
         });
         return;
       }
+      let PredictedDataInSearchDate = data.filter(item => {
+        let unixOfItem = moment.utc(item.date).unix();
+        return unixOfItem >= start.unix() && unixOfItem <= end.unix();
+      });
       let last = data[data.length - 1];
       // console.log(last);
       // console.log(moment(last.date).unix(), end.unix());
       if (end.unix() - moment(last.date).unix() >= period) {
         resolve({
-          data: data,
+          data: PredictedDataInSearchDate,
           upsert: {
             start: Number(moment(last.date).unix()) + Number(period),
             end: end.unix()
           }
         });
       } else {
-        resolve({ data: data, upsert: null });
+        resolve({ data: PredictedDataInSearchDate, upsert: null });
       }
     });
   });
@@ -329,132 +372,70 @@ function getSamePeriod(target, period) {
 function getChartData(start, end, period, now = undefined) {
   console.log("getChartData");
   return new Promise((resolve, reject) => {
-    let samePeriod = getSamePeriod(moment(now), period);
-    // console.log("samePeriod", samePeriod);
-    if (period === 86400) {
-      if (start <= samePeriod.start.unix()) {
-        // 시작 시간 과거
-        if (end < samePeriod.end.unix()) {
-          // 끝시간 과거
-          Chart1D.findAll({
-            where: {
-              date: {
-                [Op.between]: [
-                  moment.unix(start).toISOString(),
-                  moment.unix(end).toISOString()
-                ]
-              }
-            }
-          }).then(chart1ds => {
-            resolve(chart1ds);
-          });
-        } else {
-          // 끝시간 미래
-          console.log("end is future");
-          Chart1D.findAll({
-            where: {
-              date: {
-                [Op.between]: [
-                  moment.unix(start).toISOString(),
-                  samePeriod.start.toISOString()
-                ]
-              }
-            }
-          }).then(chart1ds => {
-            console.log(chart1ds);
-            PredictChart.findAll({
-              where: {
-                date: {
-                  [Op.between]: [
-                    samePeriod.end.toISOString(),
-                    moment.unix(end).toISOString()
-                  ]
-                },
-                period: period
-              }
-            }).then(predicted => {
-              let concated = chart1ds.concat(predicted);
-              resolve(concated);
-            });
-          });
-        }
-      } else {
-        // 시작시간 미래
-        PredictChart.findAll({
+    let searchTimeOfPeriod = getTimeOfPeriod(start, end, period);
+    let samePeriod = getSamePeriod(moment.utc(now), period);
+    console.log("samePeriod", samePeriod, "now :", moment.utc(now));
+    if (searchTimeOfPeriod.start < samePeriod.start.unix()) {
+      // 시작 시간 과거
+      if (searchTimeOfPeriod.end < samePeriod.start.unix()) {
+        // 끝시간 과거
+        Chart1D.findAll({
           where: {
             date: {
               [Op.between]: [
-                moment.unix(start).toISOString(),
-                moment.unix(end).toISOString()
+                moment.unix(searchTimeOfPeriod.start).toISOString(),
+                moment.unix(searchTimeOfPeriod.end).toISOString()
               ]
-            },
-            period: period
+            }
           }
-        }).then(predicted => {
-          resolve(predicted);
+        }).then(chart1ds => {
+          resolve(chart1ds);
         });
-      }
-    } else if (period === 1800) {
-      if (start <= samePeriod.start.unix()) {
-        // 시작 시간 과거
-        if (end < samePeriod.end.unix()) {
-          // 끝시간 과거
-          Chart1D.findAll({
-            where: {
-              date: {
-                [Op.between]: [
-                  moment.unix(start).toISOString(),
-                  moment.unix(end).toISOString()
-                ]
-              }
-            }
-          }).then(chart1ds => {
-            resolve(chart1ds);
-          });
-        } else {
-          // 끝시간 미래
-          Chart30min.findAll({
-            where: {
-              date: {
-                [Op.between]: [
-                  moment.unix(start).toISOString(),
-                  moment.unix(end).toISOString()
-                ]
-              }
-            }
-          }).then(chart1ds => {
-            PredictChart.findAll({
-              where: {
-                date: {
-                  [Op.between]: [
-                    samePeriod.end.toISOString(),
-                    moment.unix(end).toISOString()
-                  ]
-                },
-                period: period
-              }
-            }).then(predicted => {
-              let concated = chart1ds.concat(predicted);
-              resolve(concated);
-            });
-          });
-        }
       } else {
-        // 시작시간 미래
-        PredictChart.findAll({
+        // 끝시간 미래
+        console.log("end is future");
+        Chart1D.findAll({
           where: {
             date: {
               [Op.between]: [
-                moment.unix(start).toISOString(),
-                moment.unix(end).toISOString()
+                moment.unix(searchTimeOfPeriod.start).toISOString(),
+                moment.unix(samePeriod.start.unix() - period).toISOString()
               ]
-            },
-            period: period
+            }
           }
-        }).then(predicted => {
-          resolve(predicted);
+        }).then(chart1ds => {
+          seqh.logOfInstance("chart1ds :", chart1ds);
+          PredictChart.findAll({
+            where: {
+              date: {
+                [Op.between]: [
+                  samePeriod.start.toISOString(),
+                  moment.unix(searchTimeOfPeriod.end).toISOString()
+                ]
+              },
+              period: period
+            }
+          }).then(predicted => {
+            let concated = chart1ds.concat(predicted);
+            resolve(concated);
+          });
         });
       }
+    } else {
+      // 시작시간 미래
+      PredictChart.findAll({
+        where: {
+          date: {
+            [Op.between]: [
+              moment.unix(searchTimeOfPeriod.start).toISOString(),
+              moment.unix(searchTimeOfPeriod.end).toISOString()
+            ]
+          },
+          period: period
+        }
+      }).then(predicted => {
+        resolve(predicted);
+      });
     }
   });
 }
@@ -511,7 +492,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
           };
           task.push(asyncCloser);
         }
-        // console.log(task);
+        console.log("task :", task);
         async.waterfall(task, (err, result) => {
           if (err) reject(err);
           let periodStart = getTimeOfPeriod(date.start, date.end, period).start;
@@ -611,6 +592,9 @@ function getLengthOfPeriod(start, end, period) {
  * @return {{start: number, end: number}}
  */
 function getTimeOfPeriod(start, end, period) {
+  if (start > end) {
+    return null;
+  }
   let periodStart = start + ((period - (start % period)) % period);
   let periodEnd = end - (end % period);
   return { start: periodStart, end: periodEnd };

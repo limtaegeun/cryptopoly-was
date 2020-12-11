@@ -76,6 +76,16 @@ describe("predict test", function() {
       result.start.should.equal(moment.utc("2020-04-04").unix());
       result.end.should.equal(moment.utc("2020-04-08").unix());
     });
+    it("input Error : getTimeOfPeriod ", function() {
+      let result = methods.getTimeOfPeriod(
+        moment.utc("2020-08-04").unix(),
+        moment.utc("2020-04-08").unix() + 300,
+        86400
+      );
+
+      console.log(result);
+      result.should.be.equal(null);
+    });
 
     it("should return expected date array : getUnConfirmDate", function() {
       let confirmed = [
