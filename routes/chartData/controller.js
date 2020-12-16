@@ -9,6 +9,8 @@ const methods = require("./methods");
 const Sequelize = require("sequelize");
 const Op = Sequelize.Op;
 
+const predictMethods = require("../predict/methods");
+
 module.exports = {
   getChartData(req, res) {
     let { id, period } = req.params;
@@ -28,13 +30,17 @@ module.exports = {
   },
   retrieveChartData(req, res) {
     let { start, end, period } = req.query;
-    start = moment.utc(start, "YYYY-MM-DD");
-    end = moment.utc(end, "YYYY-MM-DD");
+    let searchStart = moment.utc(start, "YYYY-MM-DD");
+    let availableLastChartDataTime =
+      predictMethods.getSamePeriod(moment(), period).start.unix() - period;
+    let searchEnd = moment.unix(
+      Math.min(moment.utc(end, "YYYY-MM-DD").unix(), availableLastChartDataTime)
+    );
     console.log(req.query, req.user);
     let option = {
       where: {
         date: {
-          [Op.between]: [start.toISOString(), end.toISOString()]
+          [Op.between]: [searchStart.toISOString(), searchEnd.toISOString()]
         }
       }
     };

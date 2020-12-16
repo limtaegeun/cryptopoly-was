@@ -42,7 +42,7 @@ module.exports = {
 function getPastPredictData(start, end, period, pairId) {
   return new Promise(resolve => {
     getConfirmedPredictData(start, end).then(confirmed => {
-      seqh.logOfInstance(confirmed, "confirmed");
+      // seqh.logOfInstance(confirmed, "confirmed");
       let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
       let lengthOfExpectConfirmedData =
         timeOfPeriod.end - timeOfPeriod.start / period + 1;
@@ -95,9 +95,9 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
       period,
       confirmed
     ).sort((a, b) => a - b);
-    console.log("unconfirmDates :", unconfirmedDates);
+    // console.log("unconfirmDates :", unconfirmedDates);
     getSourceToPredictUnconfirmed(unconfirmedDates, period).then(source => {
-      seqh.logOfInstance(source, "source Data");
+      // seqh.logOfInstance(source, "source Data");
       requestAllUnconfirmedDates(source, unconfirmedDates, period)
         .then(newPredictList => {
           let upsertData = newPredictList.map((value, i) => {
@@ -109,7 +109,7 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
               confirm: true
             };
           });
-          console.log("upsertData :", upsertData);
+          // console.log("upsertData :", upsertData);
           let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
           resolve(dataOfConfirmedAndNewPredict);
 
@@ -133,16 +133,16 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
  */
 function getUnconfirmedDates(start, end, period, confirmed) {
   let timeOfPeriod = getTimeOfPeriod(start, end, period);
-  console.log("timeOfPeriod : ", timeOfPeriod, period);
+  // console.log("timeOfPeriod : ", timeOfPeriod, period);
   let confirmedDate = confirmed.map(item => moment.utc(item.date).unix());
-  console.log("confirmedDate: ", confirmedDate);
+  // console.log("confirmedDate: ", confirmedDate);
   let unconfirmedDates = [];
   for (
     let timestamp = timeOfPeriod.start;
     timestamp <= timeOfPeriod.end;
     timestamp += period
   ) {
-    console.log("timestamp : ", timestamp);
+    // console.log("timestamp : ", timestamp);
     if (!confirmedDate.includes(timestamp)) {
       unconfirmedDates.push(timestamp);
     }
@@ -271,7 +271,7 @@ function getPredictByPredicted(futurePredictDates, period, pairId) {
           }
         );
       } else {
-        seqh.logOfInstance(predicted.data);
+        // seqh.logOfInstance(predicted.data);
         resolve(predicted.data);
       }
     });
@@ -310,7 +310,7 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
           return 0;
         }
       });
-      console.log(data);
+      // console.log(data);
       if (data.length < 1) {
         let timeOfPeriod = getTimeOfPeriod(
           periodRange.start.unix(),
@@ -404,7 +404,7 @@ function getChartData(start, end, period, now = undefined) {
             }
           }
         }).then(chart1ds => {
-          seqh.logOfInstance("chart1ds :", chart1ds);
+          // seqh.logOfInstance("chart1ds :", chart1ds);
           PredictChart.findAll({
             where: {
               date: {
@@ -459,7 +459,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
 
     getChartData(searchStart.unix(), searchEnd.unix(), period, now).then(
       source => {
-        seqh.logOfInstance(source, "source");
+        // seqh.logOfInstance(source, "source");
         let parsedSource = parseToLTCM(source);
         let initCloser = callback => {
           requestPredict(parsedSource, period).then(predicted => {
@@ -482,7 +482,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
             source.push(JSON.parse(result.predicted)[0][0]);
             source = [source];
             requestPredict(JSON.stringify(source), period).then(predicted => {
-              console.log(i + 2, "source: ", source, "result :", predicted);
+              // console.log(i + 2, "source: ", source, "result :", predicted);
               callback(null, {
                 predicted: predicted,
                 source: JSON.stringify(source),
@@ -492,7 +492,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
           };
           task.push(asyncCloser);
         }
-        console.log("task :", task);
+        // console.log("task :", task);
         async.waterfall(task, (err, result) => {
           if (err) reject(err);
           let periodStart = getTimeOfPeriod(date.start, date.end, period).start;
@@ -504,7 +504,7 @@ function upsertPredictByDate(date, period, pairId, now = undefined) {
               CurrencyPairId: pairId
             };
           });
-          seqh.logOfInstance(createData, "result");
+          // seqh.logOfInstance(createData, "result");
           resolve(createData);
           PredictChart.bulkCreate(createData, {
             fields: [

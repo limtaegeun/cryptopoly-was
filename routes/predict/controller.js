@@ -30,7 +30,7 @@ module.exports = {
     let asyncList = [];
     let pastDates = methods.getTimeOfPeriod(
       moment.utc(start).unix(),
-      moment().unix(),
+      Math.min(moment().unix(), moment(end).unix()),
       period
     );
 
@@ -45,7 +45,7 @@ module.exports = {
     }
 
     let futurePredictDates = methods.getTimeOfPeriod(
-      moment().unix(),
+      Math.max(moment().unix(), moment(start).unix()),
       moment.utc(end).unix(),
       period
     );
