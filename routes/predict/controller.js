@@ -30,7 +30,7 @@ module.exports = {
     let asyncList = [];
     let pastDates = methods.getTimeOfPeriod(
       moment.utc(start).unix(),
-      Math.min(moment().unix(), moment(end).unix()),
+      Math.min(moment().unix(), moment.utc(end).unix()),
       period
     );
 
