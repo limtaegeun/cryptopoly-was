@@ -10,8 +10,25 @@ const _ = require("lodash");
 import methods from "./methods";
 
 module.exports = {
+  loginCheck(req, res) {
+    console.log("check user:", req.user);
+    if (req.isAuthenticated() && req.user) {
+      console.log("auth user:", req.user.email);
+      return res.status(200).json({
+        success: true,
+        user: { email: req.user.email, username: req.user.username }
+      });
+    }
+    return res.status(200).json({
+      success: false,
+      user: null
+    });
+  },
   login(req, res) {
     let body = req.body;
+    // If this function gets called, authentication was successful.
+    // `req.user` contains the authenticated user.
+    console.log("login request user :", req.user.email);
     return res.status(200).json({
       success: true,
       user: { email: req.user.email, username: req.user.username }

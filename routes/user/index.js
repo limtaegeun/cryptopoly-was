@@ -5,6 +5,7 @@ const passport = require("passport");
 const controller = require("./controller");
 const validator = require("./validator");
 
+router.get("/check", controller.loginCheck);
 router.post("/login", passport.authenticate("local"), controller.login);
 router.get("/logout", controller.logout);
 router.post(

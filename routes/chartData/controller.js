@@ -30,6 +30,10 @@ module.exports = {
   },
   retrieveChartData(req, res) {
     let { start, end, period } = req.query;
+    if (req.isAuthenticated() && req.user) {
+      console.log("auth user:", req.user);
+    }
+    console.log("user:", req.user);
     let searchStart = moment.utc(start, "YYYY-MM-DD");
     let availableLastChartDataTime =
       predictMethods.getSamePeriod(moment(), period).start.unix() - period;

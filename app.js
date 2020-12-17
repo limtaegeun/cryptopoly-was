@@ -11,8 +11,10 @@ var app = express();
 var compression = require("compression");
 const session = require("express-session");
 const passport = require("passport");
-const passportConfig = require("./passport");
-const sessionKey = require("./config/session.json");
+const MySQLStore = require("express-mysql-session")(session);
+require("./passport").config(passport);
+require("dotenv").config();
+
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
@@ -29,16 +31,36 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.use(
   cors({
-    origin: [/\localhost:[0-9]+$/, /\.cryptoply\.com$/, /cryptoply\.com$/]
+    origin: [/localhost:[0-9]+$/, /\.cryptoply\.com$/, /cryptoply\.com$/],
+    credentials: true
   })
 );
 
+const env = process.env.NODE_ENV || "development";
+const dbConfig = require(__dirname + "/config/config.json")[env];
+const sessionStore = new MySQLStore({
+  ...dbConfig,
+  user: dbConfig.username,
+  schema: {
+    tableName: "userSession"
+  }
+});
+
 app.use(
-  session({ secret: sessionKey.secret, resave: true, saveUninitialized: false })
+  session({
+    secret: process.env.COOKIE_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      maxAge: 1000 * 60 * 60 * 24 * 30
+    }
+  })
 ); // 세션 활성화
 app.use(passport.initialize()); // passport 구동
 app.use(passport.session()); // 세션 연결
-passportConfig(); // passport 설정
 
 console.log("port: ", process.env.PORT, "mode: ", process.env.NODE_ENV);
 

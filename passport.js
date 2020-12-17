@@ -1,17 +1,18 @@
-const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const crypto = require("crypto");
 const { User } = require("./models");
 const pwdConfig = require("./config/crypto.json");
 
-module.exports = () => {
+exports.config = passport => {
   passport.serializeUser((user, done) => {
     // Strategy 성공 시 호출됨 로그인 성공시 세션에 저장
+    console.log("serializeUser:", user.email, user.id);
     done(null, user.id); // 여기의 user가 deserializeUser의 첫 번째 매개변수로 이동
   });
 
   passport.deserializeUser((id, done) => {
     // 요청마다 req.user 넘겨줌. 매개변수 user는 serializeUser의 done의 인자 user를 받은 것
+    console.log("deserializeUser : ", id);
     User.findByPk(id).then(user => {
       done(null, user); // 여기의 user가 req.user가 됨
     });
@@ -30,7 +31,7 @@ module.exports = () => {
         console.log(email, password);
         User.findOne({ where: { email: email } })
           .then(user => {
-            console.log(user);
+            console.log(user.email);
             if (!user) {
               return done(null, false, {
                 message: "존재하지 않는 아이디입니다"
