@@ -24,7 +24,7 @@ module.exports = {
  * @param password {string}
  * @param callback {closer}- (hasedPwd, salt) => {}
  */
-function hashPassword(password, callback) {
+function hashPassword(password) {
   return new Promise((resolve, reject) => {
     crypto.randomBytes(pwdConfig.pwd.keylen, (err, buf) => {
       let salt = buf.toString("base64");
@@ -40,7 +40,7 @@ function hashPassword(password, callback) {
             return;
           }
           const hashedPwd = key.toString("base64");
-          resolve(hashedPwd, salt);
+          resolve({ hashedPwd, salt });
         }
       );
     });

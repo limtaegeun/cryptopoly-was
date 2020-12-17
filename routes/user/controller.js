@@ -38,12 +38,13 @@ module.exports = {
     let body = req.body;
     methods
       .hashPassword(body.password)
-      .then((hash, salt) => {
+      .then(hash => {
+        console.log(hash.salt);
         return User.create({
           email: body.email,
           username: body.username,
-          password: hash,
-          salt: salt
+          password: hash.hashedPwd,
+          salt: hash.salt
         });
       })
       .then(function(result) {
