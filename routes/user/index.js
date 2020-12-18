@@ -14,5 +14,6 @@ router.post(
   validator.signUpResult,
   controller.signUp
 );
+router.post("/changepwd", controller.changePassword);
 
 module.exports = router;

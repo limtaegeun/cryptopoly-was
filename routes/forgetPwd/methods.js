@@ -69,7 +69,7 @@ function changeHashedPassword(password, salt) {
           return;
         }
         const hashedPwd = key.toString("base64");
-        resolve(hashedPwd, salt);
+        resolve({ hashedPwd, salt });
       }
     );
   });

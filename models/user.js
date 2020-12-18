@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
       username: DataTypes.STRING(20),
       password: DataTypes.STRING(70),
       salt: DataTypes.STRING(70),
+      plan: DataTypes.STRING(10),
       memberDueDate: DataTypes.DATE
     },
     {}

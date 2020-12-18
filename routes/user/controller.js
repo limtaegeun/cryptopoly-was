@@ -8,6 +8,10 @@ const rp = require("request-promise");
 const _ = require("lodash");
 
 import methods from "./methods";
+import {
+  comparePassword,
+  genHashedPasswordBySalt
+} from "../../plugin/password";
 
 module.exports = {
   loginCheck(req, res) {
@@ -16,7 +20,7 @@ module.exports = {
       console.log("auth user:", req.user.email);
       return res.status(200).json({
         success: true,
-        user: { email: req.user.email, username: req.user.username }
+        user: req.user
       });
     }
     return res.status(200).json({
@@ -31,7 +35,7 @@ module.exports = {
     console.log("login request user :", req.user.email);
     return res.status(200).json({
       success: true,
-      user: { email: req.user.email, username: req.user.username }
+      user: req.user
     });
   },
   signUp(req, res) {
@@ -48,7 +52,7 @@ module.exports = {
         });
       })
       .then(function(result) {
-        return res.status(200).json({ success: true, data: result });
+        return res.status(200).json({ user: result });
       })
       .catch(function(err) {
         return res
@@ -60,6 +64,33 @@ module.exports = {
     req.logout();
     return res.status(200).json({
       success: true
+    });
+  },
+  changePassword(req, res) {
+    let { pwd, newPwd } = req.body;
+    let user = req.user;
+    comparePassword(user, pwd, (passError, isMatch) => {
+      if (isMatch) {
+        methods
+          .hashPassword(newPwd)
+          .then(hash => {
+            user.password = hash.hashedPwd;
+            user.salt = hash.salt;
+            return user.save();
+          })
+          .then(() => {
+            return res.status(200).json({ success: true });
+          })
+          .catch(function(err) {
+            return res
+              .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+              .json({ success: false, err: err.message, stack: err.stack });
+          });
+      } else {
+        return res
+          .status(HTTP_STATUS_CODES.BAD_REQUEST)
+          .json({ success: false, msg: "The password is incorrect." });
+      }
     });
   }
 };

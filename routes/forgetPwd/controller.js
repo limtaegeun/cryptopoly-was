@@ -60,12 +60,10 @@ module.exports = {
       })
       .then(user => {
         // 유저 비밀번호 업데이트
-        return methods
-          .changeHashedPassword(newPwd, user.salt)
-          .then((hash, salt) => {
-            user.password = hash;
-            return user.save();
-          });
+        return methods.changeHashedPassword(newPwd, user.salt).then(hash => {
+          user.password = hash.hashedPwd;
+          return user.save();
+        });
       })
       .then(() => {
         return res.status(200).json({ success: true });
