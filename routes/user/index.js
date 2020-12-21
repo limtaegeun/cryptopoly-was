@@ -15,5 +15,5 @@ router.post(
   controller.signUp
 );
 router.post("/changepwd", controller.changePassword);
-
+router.post("/edit", controller.editUser);
 module.exports = router;

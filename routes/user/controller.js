@@ -60,6 +60,27 @@ module.exports = {
           .json({ success: false, err: err.message, stack: err.stack });
       });
   },
+  editUser(req, res) {
+    if (req.isAuthenticated() && req.user) {
+      let body = req.body;
+      req.user
+        .update(body)
+        .then(result => {
+          return res.status(200).json({
+            result
+          });
+        })
+        .catch(err => {
+          return res
+            .status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR)
+            .json({ success: false, err: err.message, stack: err.stack });
+        });
+    } else {
+      return res.status(HTTP_STATUS_CODES.BAD_REQUEST).json({
+        err: "authenticated fail"
+      });
+    }
+  },
   logout(req, res) {
     req.logout();
     return res.status(200).json({
