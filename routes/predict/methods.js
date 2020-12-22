@@ -41,7 +41,7 @@ module.exports = {
  */
 function getPastPredictData(start, end, period, pairId) {
   return new Promise(resolve => {
-    getConfirmedPredictData(start, end).then(confirmed => {
+    getConfirmedPredictData(start, end, pairId).then(confirmed => {
       // seqh.logOfInstance(confirmed, "confirmed");
       let timeOfPeriod = getTimeOfPeriod(start.unix(), end.unix(), period);
       let lengthOfExpectConfirmedData =
@@ -66,14 +66,16 @@ function getPastPredictData(start, end, period, pairId) {
  * getConfirmedPredictData
  * @param start {moment}
  * @param end {moment}
+ * @param pairId {int} - CurrencyPairId
  * @return {Promise<PredictChart[]>}
  */
-function getConfirmedPredictData(start, end) {
+function getConfirmedPredictData(start, end, pairId) {
   return PredictChart.findAll({
     where: {
       date: {
         [Op.between]: [start.toISOString(), end.toISOString()]
       },
+      CurrencyPairId: pairId,
       confirm: 1
     }
   });
@@ -96,30 +98,32 @@ function newPredictByUnconfirmedDate(timeOfPeriod, confirmed, period, pairId) {
       confirmed
     ).sort((a, b) => a - b);
     // console.log("unconfirmDates :", unconfirmedDates);
-    getSourceToPredictUnconfirmed(unconfirmedDates, period).then(source => {
-      // seqh.logOfInstance(source, "source Data");
-      requestAllUnconfirmedDates(source, unconfirmedDates, period)
-        .then(newPredictList => {
-          let upsertData = newPredictList.map((value, i) => {
-            return {
-              date: moment.unix(unconfirmedDates[i]).toISOString(),
-              period: period,
-              close: value[0][0],
-              CurrencyPairId: pairId,
-              confirm: true
-            };
-          });
-          // console.log("upsertData :", upsertData);
-          let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
-          resolve(dataOfConfirmedAndNewPredict);
+    getSourceToPredictUnconfirmed(unconfirmedDates, period, pairId).then(
+      source => {
+        // seqh.logOfInstance(source, "source Data");
+        requestAllUnconfirmedDates(source, unconfirmedDates, period)
+          .then(newPredictList => {
+            let upsertData = newPredictList.map((value, i) => {
+              return {
+                date: moment.unix(unconfirmedDates[i]).toISOString(),
+                period: period,
+                close: value[0][0],
+                CurrencyPairId: pairId,
+                confirm: true
+              };
+            });
+            // console.log("upsertData :", upsertData);
+            let dataOfConfirmedAndNewPredict = confirmed.concat(upsertData);
+            resolve(dataOfConfirmedAndNewPredict);
 
-          return upsertNewPredictData(upsertData);
-        })
-        .catch(err => {
-          // todo: report Error
-          console.log("Error Occur in upsert Predicted Data");
-        });
-    });
+            return upsertNewPredictData(upsertData);
+          })
+          .catch(err => {
+            // todo: report Error
+            console.log("Error Occur in upsert Predicted Data");
+          });
+      }
+    );
   });
 }
 
@@ -154,9 +158,10 @@ function getUnconfirmedDates(start, end, period, confirmed) {
  * getSourceToPredictUnconfirmed
  * @param unconfirmedDates {[Object]} - unconfirmedDates
  * @param period {int} - period
+ * @param pairId {int} - CurrencyPairId
  * @return {Promise<Object>}
  */
-function getSourceToPredictUnconfirmed(unconfirmedDates, period) {
+function getSourceToPredictUnconfirmed(unconfirmedDates, period, pairId) {
   let sourceSearchStart = moment.unix(unconfirmedDates[0] - period * 5);
   let sourceSearchEnd = moment.unix(
     unconfirmedDates[unconfirmedDates.length - 1] - period * 1
@@ -168,7 +173,8 @@ function getSourceToPredictUnconfirmed(unconfirmedDates, period) {
           sourceSearchStart.toISOString(),
           sourceSearchEnd.toISOString()
         ]
-      }
+      },
+      CurrencyPairId: pairId
     }
   });
 }
@@ -252,7 +258,8 @@ function getPredictByPredicted(futurePredictDates, period, pairId) {
     getPredictedAndToPredict(
       moment.unix(futurePredictDates.start),
       moment.unix(futurePredictDates.end),
-      period
+      period,
+      pairId
     ).then(predicted => {
       // console.log(predicted);
       if (predicted.upsert) {
@@ -285,9 +292,10 @@ function getPredictByPredicted(futurePredictDates, period, pairId) {
  * @param start {moment.Moment}
  * @param end {moment.Moment}
  * @param period {int}
+ * @param pairId {int} - CurrencyPairId,
  * @param now {string | undefined} - 'YYYY-MM-DD'
  */
-function getPredictedAndToPredict(start, end, period, now = undefined) {
+function getPredictedAndToPredict(start, end, period, now = undefined, pairId) {
   return new Promise((resolve, reject) => {
     let periodRange = getSamePeriod(moment.utc(now), period);
     PredictChart.findAll({
@@ -298,7 +306,8 @@ function getPredictedAndToPredict(start, end, period, now = undefined) {
         period: period,
         updatedAt: {
           [Op.gt]: periodRange.start.toISOString()
-        }
+        },
+        CurrencyPairId: pairId
       }
     }).then(data => {
       data.sort((a, b) => {
@@ -368,8 +377,9 @@ function getSamePeriod(target, period) {
  * @param end  {int} - utc sec timestamp
  * @param period {int}
  * @param now {string | undefined} - 'YYYY-MM-DD'
+ * @param pairId {int} - CurrencyPairId,
  */
-function getChartData(start, end, period, now = undefined) {
+function getChartData(start, end, period, now = undefined, pairId) {
   console.log("getChartData");
   return new Promise((resolve, reject) => {
     let searchTimeOfPeriod = getTimeOfPeriod(start, end, period);
@@ -386,7 +396,8 @@ function getChartData(start, end, period, now = undefined) {
                 moment.unix(searchTimeOfPeriod.start).toISOString(),
                 moment.unix(searchTimeOfPeriod.end).toISOString()
               ]
-            }
+            },
+            CurrencyPairId: pairId
           }
         }).then(chart1ds => {
           resolve(chart1ds);
@@ -401,7 +412,8 @@ function getChartData(start, end, period, now = undefined) {
                 moment.unix(searchTimeOfPeriod.start).toISOString(),
                 moment.unix(samePeriod.start.unix() - period).toISOString()
               ]
-            }
+            },
+            CurrencyPairId: pairId
           }
         }).then(chart1ds => {
           // seqh.logOfInstance("chart1ds :", chart1ds);
@@ -413,7 +425,8 @@ function getChartData(start, end, period, now = undefined) {
                   moment.unix(searchTimeOfPeriod.end).toISOString()
                 ]
               },
-              period: period
+              period: period,
+              CurrencyPairId: pairId
             }
           }).then(predicted => {
             let concated = chart1ds.concat(predicted);
@@ -431,7 +444,8 @@ function getChartData(start, end, period, now = undefined) {
               moment.unix(searchTimeOfPeriod.end).toISOString()
             ]
           },
-          period: period
+          period: period,
+          CurrencyPairId: pairId
         }
       }).then(predicted => {
         resolve(predicted);

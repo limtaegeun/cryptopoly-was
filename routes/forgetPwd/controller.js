@@ -26,7 +26,7 @@ module.exports = {
           "tgl@cryptopoly.com",
           email,
           "[Cryptopoly] Reset Password",
-          `http://localhost:8080/reset?token=${auth.token}`
+          `Click the link below to reset your password \n http://localhost:8080/reset?token=${auth.token}`
         );
       })
       .then(() => {

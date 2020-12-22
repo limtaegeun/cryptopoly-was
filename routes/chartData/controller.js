@@ -29,7 +29,7 @@ module.exports = {
       });
   },
   retrieveChartData(req, res) {
-    let { start, end, period } = req.query;
+    let { start, end, period, pairId } = req.query;
     if (req.isAuthenticated() && req.user) {
       console.log("auth user:", req.user);
     }
@@ -45,7 +45,8 @@ module.exports = {
       where: {
         date: {
           [Op.between]: [searchStart.toISOString(), searchEnd.toISOString()]
-        }
+        },
+        CurrencyPairId: pairId
       }
     };
 
