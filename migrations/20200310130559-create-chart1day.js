@@ -1,7 +1,7 @@
 "use strict";
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable("ChartData", {
+    return queryInterface.createTable("Chart1Ds", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -13,25 +13,22 @@ module.exports = {
         unique: true
       },
       high: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       low: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       open: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       close: {
-        type: Sequelize.FLOAT
+        type: Sequelize.DOUBLE
       },
       volume: {
-        type: Sequelize.FLOAT
+        type: Sequelize.INTEGER
       },
-      quoteVolume: {
-        type: Sequelize.FLOAT
-      },
-      weightedAverage: {
-        type: Sequelize.FLOAT
+      tradesCount: {
+        type: Sequelize.INTEGER
       },
       CurrencyPairId: {
         type: Sequelize.INTEGER,
@@ -53,6 +50,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable("ChartData");
+    return queryInterface.dropTable("Chart1Ds");
   }
 };

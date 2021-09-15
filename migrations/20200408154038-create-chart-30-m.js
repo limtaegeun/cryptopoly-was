@@ -1,26 +1,39 @@
 "use strict";
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable("CurrencyPairs", {
+    return queryInterface.createTable("Chart30mins", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      currencyPair: {
-        type: Sequelize.STRING(20)
+      date: {
+        type: Sequelize.DATE,
+        unique: true
       },
-      baseID: { type: Sequelize.STRING(10) },
-      quoteID: { type: Sequelize.STRING(10) },
-      enable: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+      high: {
+        type: Sequelize.DOUBLE
       },
-      AssetId: {
+      low: {
+        type: Sequelize.DOUBLE
+      },
+      open: {
+        type: Sequelize.DOUBLE
+      },
+      close: {
+        type: Sequelize.DOUBLE
+      },
+      volume: {
+        type: Sequelize.INTEGER
+      },
+      tradesCount: {
+        type: Sequelize.INTEGER
+      },
+      CurrencyPairId: {
         type: Sequelize.INTEGER,
         references: {
-          model: "Assets", // name of Target model
+          model: "CurrencyPairs", // name of Target model
           key: "id" // key in Target model that we're referencing
         },
         onUpdate: "CASCADE",
@@ -37,6 +50,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable("CurrencyPairs");
+    return queryInterface.dropTable("Chart30mins");
   }
 };

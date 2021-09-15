@@ -1,26 +1,23 @@
 "use strict";
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable("CurrencyPairs", {
+    return queryInterface.createTable("PwdAuths", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      currencyPair: {
-        type: Sequelize.STRING(20)
+      token: {
+        type: Sequelize.STRING(60)
       },
-      baseID: { type: Sequelize.STRING(10) },
-      quoteID: { type: Sequelize.STRING(10) },
-      enable: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+      ttl: {
+        type: Sequelize.INTEGER
       },
-      AssetId: {
+      userId: {
         type: Sequelize.INTEGER,
         references: {
-          model: "Assets", // name of Target model
+          model: "Users", // name of Target model
           key: "id" // key in Target model that we're referencing
         },
         onUpdate: "CASCADE",
@@ -37,6 +34,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable("CurrencyPairs");
+    return queryInterface.dropTable("PwdAuths");
   }
 };

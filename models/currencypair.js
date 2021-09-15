@@ -3,7 +3,9 @@ module.exports = (sequelize, DataTypes) => {
   const CurrencyPair = sequelize.define(
     "CurrencyPair",
     {
-      currencyPair: DataTypes.STRING,
+      currencyPair: DataTypes.STRING(20),
+      baseID: DataTypes.STRING(10),
+      quoteID: DataTypes.STRING(10),
       enable: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
@@ -13,8 +15,10 @@ module.exports = (sequelize, DataTypes) => {
   );
   CurrencyPair.associate = function(models) {
     // associations can be defined here
-    CurrencyPair.hasMany(models.ChartData);
-    CurrencyPair.belongsTo(models.Currency);
+    CurrencyPair.hasMany(models.Chart1D);
+    CurrencyPair.hasMany(models.Chart30min);
+    CurrencyPair.belongsTo(models.Asset);
+    CurrencyPair.hasMany(models.PredictChart);
   };
   return CurrencyPair;
 };
